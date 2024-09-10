@@ -11,9 +11,9 @@ path = "../packages.rs"
 # Check the two upstream repositories for the latest releases
 
 [[package.metadata.build-package.external-files]]
-url = "https://www.kernel.org/pub/linux/kernel/firmware/linux-firmware-20231111.tar.xz"
-sha512 = "dd8eb7e8a51fe14479e2f4e1081a8a31f13d041ddd6180eaae6fe865dbad303c89aaaed2b9df237923f74f1cf9fe8c2e5492b4de5fce991ddb02bb091c95dc58"
+url = "https://www.kernel.org/pub/linux/kernel/firmware/linux-firmware-20240811.tar.xz"
+sha512 = "4ea6c24f4bf60eb7ae4cd2993ce4e9dadb03ca7e92f8ccb4778fcebd5c32e16ba8c6095e74b9ed6a111f1b44b983177b52f35a9ad8be7d1dfec2de29a296b8d1"
 
 [[package.metadata.build-package.external-files]]
-url = "https://github.com/intel/Intel-Linux-Processor-Microcode-Data-Files/archive/refs/tags/microcode-20231114.tar.gz"
-sha512 = "a684444ef81e81687ff43b8255e95675eed1d728053bb1a483a60e94e2d2d43f10fc12522510b22daf90c4debd8f035e6b9a565813aa799c2e1e3a464124f59b"
+url = "https://github.com/intel/Intel-Linux-Processor-Microcode-Data-Files/archive/refs/tags/microcode-20240813.tar.gz"
+sha512 = "ba1fa7d9bed7d90756ea959f5878afca0deacc9b1e932a936a15d74a411b7efb6103a4af75dc3731d9cbb2e464439ce9a7d448f75bc6f38b616907ff6dec6ee3"

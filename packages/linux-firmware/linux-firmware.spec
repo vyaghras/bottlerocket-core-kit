@@ -8,7 +8,7 @@
 %global __strip /usr/bin/true
 
 Name: %{_cross_os}linux-firmware
-Version: 20230625
+Version: 20240811
 Release: 1%{?dist}
 Summary: Firmware files used by the Linux kernel
 # The following list of SPDX identifiers was constructed with help of scancode

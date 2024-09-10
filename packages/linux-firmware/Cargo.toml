@@ -12,5 +12,5 @@ package-name = "linux-firmware"
 path = "../packages.rs"
 
 [[package.metadata.build-package.external-files]]
-url = "https://www.kernel.org/pub/linux/kernel/firmware/linux-firmware-20230625.tar.xz"
-sha512 = "0e48aa7f63495485426d37491c7cb61843165625bd47f912c5d83628c6de871759f1a78be3af3d651f7c396bd87dff07e21ba7afc47896c1c143106d5f16d351"
+url = "https://www.kernel.org/pub/linux/kernel/firmware/linux-firmware-20240811.tar.xz"
+sha512 = "4ea6c24f4bf60eb7ae4cd2993ce4e9dadb03ca7e92f8ccb4778fcebd5c32e16ba8c6095e74b9ed6a111f1b44b983177b52f35a9ad8be7d1dfec2de29a296b8d1"
