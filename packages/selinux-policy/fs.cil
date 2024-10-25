@@ -44,9 +44,9 @@
 (filecon "/.*/usr/bin/mount" file mount_exec)
 (filecon "/.*/usr/bin/apiserver" file api_exec)
 (filecon "/.*/usr/bin/early-boot-config" file api_exec)
-(filecon "/.*/usr/bin/migrator" file api_exec)
+(filecon "/.*/usr(/fips)?/bin/migrator" file api_exec)
 (filecon "/.*/usr/bin/storewolf" file api_exec)
-(filecon "/.*/usr/bin/cfsignal" file api_exec)
+(filecon "/.*/usr(/fips)?/bin/cfsignal" file api_exec)
 (filecon "/.*/usr/bin/thar-be-settings" file api_exec)
 (filecon "/.*/usr/bin/dbus-broker.*" file bus_exec)
 (filecon "/.*/usr/sbin/chronyd" file clock_exec)
@@ -57,7 +57,7 @@
 (filecon "/.*/usr(/fips)?/bin/docker.*" file runtime_exec)
 (filecon "/.*/usr(/fips)?/bin/host-ctr" file runtime_exec)
 (filecon "/.*/usr(/fips)?/bin/runc.*" file runtime_exec)
-(filecon "/.*/usr/bin/shibaken" file api_exec)
+(filecon "/.*/usr(/fips)?/bin/shibaken" file api_exec)
 
 ; Label local storage mounts.
 (filecon "/local" any local)
