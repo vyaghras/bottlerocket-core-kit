@@ -2,6 +2,7 @@
 // be registered with the Handlebars library to assist in manipulating
 // text at render time.
 
+use base64::Engine;
 use bottlerocket_modeled_types::{OciDefaultsCapability, OciDefaultsResourceLimitType};
 use cidr::AnyIpCidr;
 use dns_lookup::lookup_host;
@@ -528,6 +529,81 @@ pub fn tuf_prefix(
 
     // write it to the template
     out.write(&tuf_repository)
+        .with_context(|_| error::TemplateWriteSnafu {
+            template: template_name.to_owned(),
+        })?;
+
+    Ok(())
+}
+
+/// The `aws-config` helper is used to create an AWS config file
+/// with `use_fips_endpoint` value set based on if the variant is FIPS enabled.
+///
+/// # Fallback
+///
+/// If this helper runs and `settings.aws.config` is set or `settings.aws.config`
+/// is set to a profile other than "default" the helper will return early, leaving the
+/// existing `settings.aws.config` setting in place.
+///
+/// # Example
+///
+/// The AWS config value is generated via
+/// `{{ aws-config settings.aws.config settings.aws.profile }}`
+///
+/// This would result in something like:
+/// ```toml
+/// [default]
+/// use_fips_endpoint=false
+/// ```
+///
+/// The helper will then base64 encode this content and set as `settings.aws.config`.
+pub fn aws_config(
+    helper: &Helper<'_, '_>,
+    _: &Handlebars,
+    _: &Context,
+    renderctx: &mut RenderContext<'_, '_>,
+    out: &mut dyn Output,
+) -> Result<(), RenderError> {
+    trace!("Starting aws-config helper");
+    let template_name = template_name(renderctx);
+
+    check_param_count(helper, template_name, 2)?;
+
+    let aws_config = get_param(helper, 0)?;
+    if !aws_config.is_null() {
+        trace!("settings.aws.config already configured. Exiting aws-config helper early");
+        return Ok(());
+    }
+
+    // settings.aws.profile may be null. If so, we'll use the "default" profile in constructing
+    // the AWS config.
+    let aws_profile = match get_param(helper, 1)? {
+        Value::Null => "default",
+        Value::String(s) => s,
+        _ => {
+            return Err(RenderError::from(
+                error::TemplateHelperError::InvalidTemplateValue {
+                    expected: "string",
+                    value: get_param(helper, 1)?.to_owned(),
+                    template: template_name.to_owned(),
+                },
+            ))
+        }
+    };
+
+    if aws_profile != "default" {
+        return Ok(());
+    }
+
+    // construct the base64 encoded AWS config
+    let aws_config_str = format!(
+        r#"[default]
+use_fips_endpoint={}"#,
+        fips_enabled()
+    );
+    let new_aws_config = base64::engine::general_purpose::STANDARD.encode(&aws_config_str);
+
+    out.write(&new_aws_config)
         .with_context(|_| error::TemplateWriteSnafu {
             template: template_name.to_owned(),
         })?;
@@ -1739,6 +1815,63 @@ mod test_tuf_repository {
         )
         .unwrap();
         assert_eq!(result, EXPECTED_URL_EU_ISOE_WEST_1);
+    }
+}
+
+#[cfg(test)]
+mod test_aws_config_fips_endpoint {
+    use super::*;
+    use handlebars::RenderError;
+    use serde::Serialize;
+    use serde_json::json;
+
+    // A thin wrapper around the handlebars render_template method that includes
+    // setup and registration of helpers
+    fn setup_and_render_template<T>(tmpl: &str, data: &T) -> Result<String, RenderError>
+    where
+        T: Serialize,
+    {
+        let mut aws_config_helper = Handlebars::new();
+        aws_config_helper.register_helper("aws-config", Box::new(aws_config));
+
+        aws_config_helper.render_template(tmpl, data)
+    }
+
+    const METADATA_TEMPLATE: &str = "{{ aws-config settings.aws.config settings.aws.profile }}";
+
+    // base64 encoded string:
+    // [default]
+    // use_fips_endpoint=false
+    const EXPECTED_CONFIG_DEFAULT: &str = "W2RlZmF1bHRdCnVzZV9maXBzX2VuZHBvaW50PWZhbHNl";
+
+    #[test]
+    fn config_default() {
+        let result = setup_and_render_template(
+            METADATA_TEMPLATE,
+            &json!({"settings": {"aws": {"profile": "default"}}}),
+        )
+        .unwrap();
+        assert_eq!(result, EXPECTED_CONFIG_DEFAULT);
+    }
+
+    #[test]
+    fn config_already_exists() {
+        let result = setup_and_render_template(
+            METADATA_TEMPLATE,
+            &json!({"settings": {"aws": {"profile": "default", "config": "abc"}}}),
+        )
+        .unwrap();
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn config_non_default_profile() {
+        let result = setup_and_render_template(
+            METADATA_TEMPLATE,
+            &json!({"settings": {"aws": {"profile": "custom"}}}),
+        )
+        .unwrap();
+        assert_eq!(result, "");
     }
 }
 
