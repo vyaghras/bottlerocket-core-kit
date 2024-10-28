@@ -152,9 +152,13 @@ mod build_connector {
     use crate::hyper_1_0::{HyperUtilResolver, Inner};
     use aws_smithy_runtime_api::client::dns::ResolveDns;
     use client::connect::HttpConnector;
+    use headers::Authorization;
+    use hyper::Uri;
+    use hyper_http_proxy::{Proxy, ProxyConnector};
     use hyper_util::client::legacy as client;
     use rustls::crypto::CryptoProvider;
     use std::sync::Arc;
+    use url::Url;
 
     fn restrict_ciphers(base: CryptoProvider) -> CryptoProvider {
         let suites = &[
@@ -208,6 +212,60 @@ mod build_connector {
         resolver: R,
     ) -> hyper_rustls::HttpsConnector<HttpConnector<HyperUtilResolver<R>>> {
         make_tls(HyperUtilResolver { resolver }, crypto_provider.provider())
+    }
+
+    pub(super) fn https_with_proxy(
+        https_connector: hyper_rustls::HttpsConnector<HttpConnector>,
+        https_proxy: &str,
+        no_proxy: Option<Vec<String>>,
+    ) -> hyper_http_proxy::ProxyConnector<hyper_rustls::HttpsConnector<HttpConnector>> {
+        // Determines whether a request of a given scheme, host and port should be proxied
+        // according to `https_proxy` and `no_proxy`.
+
+        let intercept = move |scheme: Option<&str>, host: Option<&str>, _port| {
+            if let Some(host) = host {
+                if let Some(no_proxy) = &no_proxy {
+                    if scheme != Some("https") {
+                        return false;
+                    }
+                    if no_proxy.iter().any(|s| s == "*") {
+                        // Don't proxy anything
+                        return false;
+                    }
+                    // If the host matches one of the no proxy list entries, return false (don't proxy)
+                    // Note that we're not doing anything fancy here for checking `no_proxy` since
+                    // we only expect requests here to be going out to some AWS API endpoint.
+                    return !no_proxy.iter().any(|no_proxy_host| {
+                        !no_proxy_host.is_empty() && host.ends_with(no_proxy_host)
+                    });
+                }
+                true
+            } else {
+                false
+            }
+        };
+
+        let mut proxy_uri = https_proxy.parse::<Uri>().expect("Invalid proxy URI");
+
+        // If the proxy's URI doesn't have a scheme, assume HTTP for the scheme and let the proxy
+        // server forward HTTPS connections and start a tunnel.
+        if proxy_uri.scheme().is_none() {
+            proxy_uri = format!("http://{}", https_proxy)
+                .parse::<Uri>()
+                .expect("Unable to parse proxy URI as HTTPS");
+        }
+        let mut proxy = Proxy::new(intercept, proxy_uri);
+        // Parse https_proxy as URL to extract out auth information if any
+        let proxy_url = Url::parse(https_proxy).expect("Unable to parse HTTPS proxy as URL");
+
+        if !proxy_url.username().is_empty() || proxy_url.password().is_some() {
+            proxy.set_authorization(Authorization::basic(
+                proxy_url.username(),
+                proxy_url.password().unwrap_or_default(),
+            ));
+        }
+        ProxyConnector::from_proxy(https_connector, proxy)
+            .expect("Failed to create proxy connector")
     }
 }
 
@@ -661,6 +719,24 @@ impl HyperClientBuilder<CryptoProviderSelected> {
             build_connector::https_with_resolver(
                 self.crypto_provider.crypto_provider.clone(),
                 resolver.clone(),
+            )
+        })
+    }
+
+    /// Create a hyper client using a proxy connector
+    pub fn build_with_proxy<H, N>(self, https_proxy: H, no_proxy: Option<&[N]>) -> SharedHttpClient
+    where
+        H: AsRef<str> + Clone + Send + Sync + 'static,
+        N: AsRef<str>,
+    {
+        let crypto = self.crypto_provider.crypto_provider;
+        let no_proxy: Option<Vec<String>> =
+            no_proxy.map(|n| n.iter().map(|s| s.as_ref().to_owned()).collect());
+        build_with_fn(self.client_builder, move || {
+            build_connector::https_with_proxy(
+                cached_connectors::cached_https(crypto.clone()),
+                https_proxy.as_ref(),
+                no_proxy.clone(),
             )
         })
     }

@@ -35,10 +35,9 @@ mod api;
 mod aws;
 mod ec2;
 mod eks;
-mod hyper_proxy;
-mod proxy;
 
 use api::{settings_view_get, settings_view_set, SettingsViewDelta};
+use aws_smithy_experimental::hyper_1_0::CryptoMode;
 use base64::Engine;
 use bottlerocket_modeled_types::{KubernetesClusterDnsIp, KubernetesHostnameOverrideSource};
 use imdsclient::ImdsClient;
@@ -63,6 +62,12 @@ const ENI_MAX_PODS_PATH: &str = "/usr/share/eks/eni-max-pods";
 const AWS_CONFIG_FILE: &str = "config.pluto";
 /// The environment variable that specifies the path to the AWS config file.
 const AWS_CONFIG_FILE_ENV_VAR: &str = "AWS_CONFIG_FILE";
+
+// Shared crypto provider for HyperClients
+#[cfg(not(feature = "fips"))]
+const PROVIDER: CryptoMode = CryptoMode::AwsLc;
+#[cfg(feature = "fips")]
+const PROVIDER: CryptoMode = CryptoMode::AwsLcFips;
 
 mod error {
     use crate::{api, ec2, eks};
