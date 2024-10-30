@@ -36,6 +36,9 @@ Patch1004: 1004-af_unix-increase-default-max_dgram_qlen-to-512.patch
 # options for nvidia are instead included through DRM_SIMPLE
 Patch1005: 1005-Revert-Revert-drm-fb_helper-improve-CONFIG_FB-depend.patch
 
+# Fix cgroup v1 I/O statistics in blk-throttle to count all I/Os, not just throttled ones, aligning with cgroup v2 methods.
+Patch1100: 1100-blk-throttle-Fix-io-statistics-for-cgroup-v1.patch
+
 BuildRequires: bc
 BuildRequires: elfutils-devel
 BuildRequires: hostname
