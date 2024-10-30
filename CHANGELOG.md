@@ -1,3 +1,10 @@
+# v3.1.2 (2024-10-30)
+
+## OS Changes
+* Add kernel-6.1 patch to fix io statistics for cgroup v1 ([#225])
+
+[#225]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/225
+
 # v3.1.1 (2024-10-24)
 
 ## OS Changes
