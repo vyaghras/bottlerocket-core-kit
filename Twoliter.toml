@@ -1,5 +1,5 @@
 schema-version = 1
-release-version = "3.1.2"
+release-version = "3.1.3"
 
 [vendor.bottlerocket]
 registry = "public.ecr.aws/bottlerocket"

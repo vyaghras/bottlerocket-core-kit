@@ -1,3 +1,10 @@
+# v3.1.3 (2024-10-31)
+
+## OS Changes
+* Update kernel 6.1.112-124 ([#231])
+
+[#231]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/231
+
 # v3.1.2 (2024-10-30)
 
 ## OS Changes
