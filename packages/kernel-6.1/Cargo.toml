@@ -13,8 +13,8 @@ path = "../packages.rs"
 
 [[package.metadata.build-package.external-files]]
 # Use latest-srpm-url.sh to get this.
-url = "https://cdn.amazonlinux.com/al2023/blobstore/b88530d26f68ef4d2080a189cb3ff1b722a7298e63a286d4bbb86116075ba469/kernel-6.1.112-122.189.amzn2023.src.rpm"
-sha512 = "77c1bea98a14f611bd59e2058495e7d6a8a117f3a378087c19ef5bbf8379d0f4e775490052578a625347f255a364a878357b3ddcea962063f0802aab09dd40b6"
+url = "https://cdn.amazonlinux.com/al2023/blobstore/3b0aa0d6cf05ca272d9802ccddfc28201675b2abac6abb307f5c4b8d3ca68d26/kernel-6.1.112-124.190.amzn2023.src.rpm"
+sha512 = "f7c78716a78d453a0eaaae45f6aaf00a466d7b65e7def0c887f5ff267726b668f725b8a359770a93dbee477313cf297fa6b641580c073aa76dcefda39c19f5c2"
 
 [build-dependencies]
 microcode = { path = "../microcode" }
