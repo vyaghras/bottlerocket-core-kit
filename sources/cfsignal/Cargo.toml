@@ -11,19 +11,19 @@ exclude = ["README.md"]
 fips = ["rustls/fips", "aws-lc-rs/fips", "aws-smithy-experimental/crypto-aws-lc-fips"]
 
 [dependencies]
-log.workspace = true
-serde = { workspace = true, features = ["derive"] }
-simplelog.workspace = true
-snafu.workspace = true
-toml.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 aws-config.workspace = true
 aws-lc-rs = { workspace = true, features = ["bindgen"] }
 aws-sdk-cloudformation.workspace = true
 aws-smithy-experimental = { workspace = true, features = ["crypto-aws-lc"] }
 aws-types.workspace = true
 imdsclient.workspace = true
+log.workspace = true
 rustls.workspace = true
+serde = { workspace = true, features = ["derive"] }
+simplelog.workspace = true
+snafu.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+toml.workspace = true
 
 [build-dependencies]
 generate-readme.workspace = true

@@ -1,12 +1,13 @@
-use aws_config::BehaviorVersion;
-use std::str::FromStr;
-
 use crate::error::{self, Result};
+
+use aws_config::BehaviorVersion;
 use aws_smithy_experimental::hyper_1_0::{CryptoMode, HyperClientBuilder};
 use aws_types::region::Region;
 use imdsclient::ImdsClient;
 use log::info;
 use snafu::{OptionExt, ResultExt};
+use std::env;
+use std::str::FromStr;
 
 /// Signals Cloudformation stack resource
 pub async fn signal_resource(
@@ -29,15 +30,33 @@ pub async fn signal_resource(
         .load()
         .await;
 
-    // TODO: add support for HTTP Proxy
     #[cfg(feature = "fips")]
     let crypto_mode = CryptoMode::AwsLcFips;
     #[cfg(not(feature = "fips"))]
     let crypto_mode = CryptoMode::AwsLc;
 
-    let http_client = HyperClientBuilder::new()
-        .crypto_mode(crypto_mode)
-        .build_https();
+    let https_proxy: Option<String> = match env::var_os("HTTPS_PROXY") {
+        Some(https_proxy) => https_proxy.to_str().map(|h| h.to_string()),
+        _ => None,
+    };
+
+    let no_proxy: Option<Vec<String>> = match env::var_os("NO_PROXY") {
+        Some(no_proxy) => no_proxy
+            .to_str()
+            .map(|n| n.split(',').map(|s| s.to_string()).collect()),
+        _ => None,
+    };
+
+    let http_client = if let Some(https_proxy) = https_proxy {
+        let no_proxy = no_proxy.as_deref();
+        HyperClientBuilder::new()
+            .crypto_mode(crypto_mode)
+            .build_with_proxy(https_proxy, no_proxy)
+    } else {
+        HyperClientBuilder::new()
+            .crypto_mode(crypto_mode)
+            .build_https()
+    };
 
     let cloudformation_config = aws_sdk_cloudformation::config::Builder::from(&config)
         .http_client(http_client)

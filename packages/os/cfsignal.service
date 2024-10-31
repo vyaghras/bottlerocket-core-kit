@@ -9,6 +9,7 @@ ConditionPathExists=!/var/lib/bottlerocket/cfsignal.ran
 
 [Service]
 Type=simple
+EnvironmentFile=/etc/network/proxy.env
 ExecStart=/usr/bin/cfsignal
 
 [Install]
