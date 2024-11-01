@@ -8,6 +8,9 @@ License: Linux-OpenIB AND MIT
 Source0: https://github.com/linux-rdma/rdma-core/releases/download/v%{version}/rdma-core-%{version}.tar.gz
 Source100: libibverbs-tmpfiles.conf
 
+# RDMA logdog configuration
+Source200: logdog.rdma.conf
+
 BuildRequires: cmake
 BuildRequires: %{_cross_os}libnl-devel
 BuildRequires: %{_cross_os}glibc-devel
@@ -45,9 +48,13 @@ install -p -m 0644 %{S:100} %{buildroot}%{_cross_tmpfilesdir}/rdma-core.conf
 install -d %{buildroot}%{_cross_factorydir}%{_cross_sysconfdir}/libibverbs.d
 install -p %{buildroot}%{_cross_sysconfdir}/libibverbs.d/efa.driver %{buildroot}%{_cross_factorydir}%{_cross_sysconfdir}/libibverbs.d
 
+install -d %{buildroot}%{_cross_datadir}/logdog.d
+install -p -m 0644 %{S:200} %{buildroot}%{_cross_datadir}/logdog.d
+
 %files
 %license COPYING.md COPYING.BSD_MIT ccan/LICENSE.MIT
 %{_cross_attribution_file}
+%{_cross_datadir}/logdog.d/logdog.rdma.conf
 %{_cross_tmpfilesdir}/rdma-core.conf
 %dir %{_cross_factorydir}%{_cross_sysconfdir}/libibverbs.d
 %{_cross_factorydir}%{_cross_sysconfdir}/libibverbs.d/efa.driver
@@ -64,7 +71,6 @@ install -p %{buildroot}%{_cross_sysconfdir}/libibverbs.d/efa.driver %{buildroot}
 # Verification tools
 %{_cross_bindir}/ibv_devices
 %{_cross_bindir}/ibv_devinfo
-
 
 # Exclude the bits that are not needed
 %exclude %{_cross_datadir}/perl5
