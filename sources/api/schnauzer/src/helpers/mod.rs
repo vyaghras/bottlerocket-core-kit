@@ -316,8 +316,8 @@ mod error {
 
         #[snafu(display("Invalid metadata service limits '{},{}'", rps, burst))]
         InvalidMetadataServiceLimits {
-            rps: handlebars::JsonValue,
-            burst: handlebars::JsonValue,
+            rps: Box<handlebars::JsonValue>,
+            burst: Box<handlebars::JsonValue>,
         },
 
         #[snafu(display(
@@ -601,7 +601,7 @@ pub fn aws_config(
 use_fips_endpoint={}"#,
         fips_enabled()
     );
-    let new_aws_config = base64::engine::general_purpose::STANDARD.encode(&aws_config_str);
+    let new_aws_config = base64::engine::general_purpose::STANDARD.encode(aws_config_str);
 
     out.write(&new_aws_config)
         .with_context(|_| error::TemplateWriteSnafu {
@@ -1166,8 +1166,8 @@ pub fn ecs_metadata_service_limits(
         (rps, burst) => {
             return Err(RenderError::from(
                 error::TemplateHelperError::InvalidMetadataServiceLimits {
-                    rps: rps.to_owned(),
-                    burst: burst.to_owned(),
+                    rps: Box::new(rps.to_owned()),
+                    burst: Box::new(burst.to_owned()),
                 },
             ))
         }
