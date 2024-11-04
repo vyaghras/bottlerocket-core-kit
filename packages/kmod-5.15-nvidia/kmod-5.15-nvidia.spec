@@ -71,7 +71,7 @@ Requires: %{name}-tesla(fabricmanager)
 %package open-gpu-%{tesla_major}
 Summary: NVIDIA %{tesla_major} Open GPU driver
 Version: %{tesla_ver}
-License: MIT OR GPL-2.0-only
+License: MIT AND GPL-2.0-only
 Requires: %{_cross_os}variant-platform(aws)
 
 %description open-gpu-%{tesla_major}
