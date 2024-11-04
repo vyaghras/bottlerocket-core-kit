@@ -1,0 +1,10 @@
+[metadata.a.setting-generator]
+command = "my test command"
+strength = "weak"
+depth = 0
+
+[metadata.c.d]
+setting-generator = "shibaken generate-admin-userdata"
+
+[metadata.e.f]
+affected-services = ["cfsignal"]

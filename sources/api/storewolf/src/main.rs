@@ -19,11 +19,12 @@ use std::os::unix;
 use std::path::Path;
 use std::str::FromStr;
 use std::{env, fs, process};
+use toml::Value;
 
 use bottlerocket_modeled_types::SingleLineString;
 use datastore::key::{Key, KeyType};
 use datastore::serialization::{to_pairs, to_pairs_with_prefix};
-use datastore::{self, DataStore, FilesystemDataStore, ScalarError};
+use datastore::{self, Committed, DataStore, FilesystemDataStore, ScalarError};
 
 // The default path to defaults.toml.
 const DEFAULTS_TOML: &str = "/etc/storewolf/defaults.toml";
@@ -189,8 +190,39 @@ fn parse_metadata_toml(md_toml_val: toml::Value) -> Result<Vec<model::Metadata>>
                 for (key, val) in table {
                     trace!("Found table for key '{}'", &key);
                     let mut path = path.clone();
-                    path.push(key.to_string());
-                    to_process.push((path, val));
+                    if key == "setting-generator" {
+                        match val {
+                            Value::String(_) => {
+                                path.push(key.to_string());
+                                to_process.push((path, val));
+                            }
+                            Value::Table(setting_generator) => {
+                                let md_key = key;
+
+                                let data_key = path.join(".");
+
+                                trace!(
+                                    "Found metadata key '{}' for data key '{}'",
+                                    &md_key,
+                                    &data_key
+                                );
+
+                                // Ensure the metadata/data keys don't contain newline chars
+                                let md = SingleLineString::try_from(md_key)
+                                    .context(error::SingleLineStringSnafu)?;
+                                let key = SingleLineString::try_from(data_key)
+                                    .context(error::SingleLineStringSnafu)?;
+                                let val = toml::Value::Table(setting_generator);
+
+                                // Create the Metadata struct
+                                def_metadatas.push(model::Metadata { key, md, val })
+                            }
+                            _ => return error::DefaultsMetadataUnexpectedFormatSnafu {}.fail(),
+                        }
+                    } else {
+                        path.push(key.to_string());
+                        to_process.push((path, val));
+                    }
                 }
             }
 
@@ -259,10 +291,10 @@ fn populate_default_datastore<P: AsRef<Path>>(
     if live_path.exists() {
         debug!("Gathering existing data from the datastore");
         existing_metadata = datastore
-            .list_populated_metadata("", &None as &Option<&str>)
+            .list_populated_metadata("", &Committed::Live, &None as &Option<&str>)
             .context(error::QueryMetadataSnafu)?;
         existing_data = datastore
-            .list_populated_keys("", &datastore::Committed::Live)
+            .list_populated_keys("", &Committed::Live)
             .context(error::QueryDataSnafu)?;
     } else {
         info!("Creating datastore at: {}", &live_path.display());
@@ -289,7 +321,45 @@ fn populate_default_datastore<P: AsRef<Path>>(
     // If there are default settings, write them to the datastore in the shared pending
     // transaction. This ensures the settings will go through a commit cycle when first-boot
     // services run, which will create config files for default keys that require them.
-    if let Some(def_settings_val) = maybe_settings_val {
+    populate_default_data(&mut datastore, maybe_settings_val, &existing_data)?;
+
+    // If we have metadata, write it out to the datastore in Live state
+    // Metadata is expressed as arbitrary JSON values
+    populate_default_metadata(&mut datastore, maybe_metadata_val, &existing_metadata)?;
+
+    // If any other defaults remain (configuration files, services, etc),
+    // write them to the datastore in Live state
+    debug!("Serializing other defaults and writing new ones to datastore");
+    let defaults_json = serde_json::to_value(defaults_val).context(error::JsonConversionSnafu)?;
+    let defaults = to_pairs(&defaults_json).context(error::SerializationSnafu {
+        given: "other defaults",
+    })?;
+
+    let mut other_defaults_to_write = HashMap::new();
+    if !defaults.is_empty() {
+        for (key, val) in defaults {
+            if !existing_data.contains(&key) {
+                other_defaults_to_write.insert(key, val);
+            }
+        }
+
+        trace!(
+            "Writing other default data to datastore: {:#?}",
+            &other_defaults_to_write
+        );
+        datastore
+            .set_keys(&other_defaults_to_write, &datastore::Committed::Live)
+            .context(error::WriteKeysSnafu)?;
+    }
+    Ok(())
+}
+
+fn populate_default_data(
+    datastore: &mut impl DataStore,
+    default_settings_value: Option<Value>,
+    existing_data: &HashSet<Key>,
+) -> Result<()> {
+    if let Some(def_settings_val) = default_settings_value {
         debug!("Serializing default settings and writing new ones to datastore");
 
         ensure!(
@@ -332,8 +402,17 @@ fn populate_default_datastore<P: AsRef<Path>>(
             .context(error::WriteKeysSnafu)?;
     }
 
+    Ok(())
+}
+
+fn populate_default_metadata(
+    datastore: &mut impl DataStore,
+    default_metadata: Option<Value>,
+    existing_metadata: &HashMap<Key, HashSet<Key>>,
+) -> Result<()> {
     // If we have metadata, write it out to the datastore in Live state
-    if let Some(def_metadata_val) = maybe_metadata_val {
+    // Metadata is expressed as arbitrary JSON values
+    if let Some(def_metadata_val) = default_metadata {
         debug!("Serializing metadata and writing new keys to datastore");
         // Create a Vec<Metadata> from the metadata toml::Value
         let def_metadatas = parse_metadata_toml(def_metadata_val)?;
@@ -385,35 +464,11 @@ fn populate_default_datastore<P: AsRef<Path>>(
         for metadata in metadata_to_write {
             let (md, key, val) = metadata;
             datastore
-                .set_metadata(&md, &key, val)
+                .set_metadata(&md, &key, val, &Committed::Live)
                 .context(error::WriteMetadataSnafu)?;
         }
     }
 
-    // If any other defaults remain (configuration files, services, etc),
-    // write them to the datastore in Live state
-    debug!("Serializing other defaults and writing new ones to datastore");
-    let defaults_json = serde_json::to_value(defaults_val).context(error::JsonConversionSnafu)?;
-    let defaults = to_pairs(&defaults_json).context(error::SerializationSnafu {
-        given: "other defaults",
-    })?;
-
-    let mut other_defaults_to_write = HashMap::new();
-    if !defaults.is_empty() {
-        for (key, val) in defaults {
-            if !existing_data.contains(&key) {
-                other_defaults_to_write.insert(key, val);
-            }
-        }
-
-        trace!(
-            "Writing other default data to datastore: {:#?}",
-            &other_defaults_to_write
-        );
-        datastore
-            .set_keys(&other_defaults_to_write, &datastore::Committed::Live)
-            .context(error::WriteKeysSnafu)?;
-    }
     Ok(())
 }
 
@@ -584,5 +639,111 @@ fn main() {
     if let Err(e) = run() {
         eprintln!("{}", e);
         process::exit(1);
+    }
+}
+#[cfg(test)]
+mod test {
+    use datastore::memory::MemoryDataStore;
+    use toml::Table;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_metadata_toml() {
+        let defaults_str = include_str!("../tests/data/metadata.toml");
+
+        let mut defaults_val: toml::Value = toml::from_str(defaults_str).unwrap();
+
+        let table = defaults_val.as_table_mut().unwrap();
+
+        let maybe_metadata_val = table.remove("metadata").unwrap();
+
+        let def_metadatas = parse_metadata_toml(maybe_metadata_val).unwrap();
+
+        assert_eq!(
+            def_metadatas.first(),
+            Some(&model::Metadata {
+                key: SingleLineString::try_from("e.f").unwrap(),
+                md: SingleLineString::try_from("affected-services").unwrap(),
+                val: vec!["cfsignal"].into()
+            })
+        );
+
+        assert_eq!(
+            def_metadatas.get(1),
+            Some(&model::Metadata {
+                key: SingleLineString::try_from("c.d").unwrap(),
+                md: SingleLineString::try_from("setting-generator").unwrap(),
+                val: "shibaken generate-admin-userdata".into()
+            })
+        );
+
+        assert_eq!(
+            def_metadatas.get(2),
+            Some(&model::Metadata {
+                key: SingleLineString::try_from("a").unwrap(),
+                md: SingleLineString::try_from("setting-generator").unwrap(),
+                val: toml::Value::Table(
+                    r#"
+                    command = 'my test command'
+                    depth = 0
+                    strength = 'weak'
+                    "#
+                    .parse::<Table>()
+                    .unwrap()
+                )
+            })
+        );
+    }
+
+    #[test]
+    fn test_populate_default_metadata() {
+        let defaults_str = include_str!("../tests/data/metadata.toml");
+
+        let mut defaults_val: toml::Value = toml::from_str(defaults_str).unwrap();
+
+        let table = defaults_val.as_table_mut().unwrap();
+
+        let maybe_metadata_val = table.remove("metadata").unwrap();
+        let mut datastore: MemoryDataStore = MemoryDataStore::new();
+
+        populate_default_metadata(&mut datastore, Some(maybe_metadata_val), &HashMap::new())
+            .unwrap();
+
+        // Ensure that the metadata in array format was written correctly in datastore.
+        assert_eq!(
+            datastore
+                .get_metadata(
+                    &Key::new(KeyType::Meta, "affected-services").unwrap(),
+                    &Key::new(KeyType::Data, "e.f").unwrap(),
+                    &Committed::Live
+                )
+                .unwrap(),
+            Some("[\"cfsignal\"]".into())
+        );
+
+        // Ensure that the metadata as string was written correctly in datastore.
+        assert_eq!(
+            datastore
+                .get_metadata(
+                    &Key::new(KeyType::Meta, "setting-generator").unwrap(),
+                    &Key::new(KeyType::Data, "c.d").unwrap(),
+                    &Committed::Live
+                )
+                .unwrap(),
+            Some("\"shibaken generate-admin-userdata\"".into())
+        );
+
+        // Ensure that the metadata as object was written correctly in datastore.
+        assert_eq!(
+            datastore
+                .get_metadata(
+                    &Key::new(KeyType::Meta, "setting-generator").unwrap(),
+                    &Key::new(KeyType::Data, "a").unwrap(),
+                    &Committed::Live
+                )
+                .unwrap(),
+            Some("{\"command\":\"my test command\",\"strength\":\"weak\",\"depth\":0}".into())
+        );
     }
 }
