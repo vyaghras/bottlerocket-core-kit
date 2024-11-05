@@ -92,6 +92,9 @@ pub enum Error {
         source: datastore::deserialization::Error,
     },
 
+    #[snafu(display("Unable to deserialize data: {}", source))]
+    DeserializeStrength { source: serde_json::Error },
+
     #[snafu(display("Unable to serialize data: {}", source))]
     Serialize { source: serde_json::Error },
 
@@ -240,9 +243,31 @@ pub enum Error {
         stdout: Vec<u8>,
         source: serde_json::Error,
     },
+
+    #[snafu(display("Error deserializing response value to SettingsGenerator: {}", source))]
+    DeserializeSettingsGenerator { source: serde_json::Error },
+
+    #[snafu(display(
+        "Provided strength is not one of weak or strong. The given strength is: {}. {}",
+        strength,
+        source
+    ))]
+    InvalidStrength {
+        strength: String,
+        source: serde_plain::Error,
+    },
+
+    #[snafu(display(
+        "Trying to change the strength from strong to weak for key: {}, Operation restricted",
+        key
+    ))]
+    DisallowStrongToWeakStrength { key: String },
+
+    #[snafu(display("Unable to parse the given strength. Error: "))]
+    ParseStrength { source: serde_plain::Error },
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl From<Error> for actix_web::HttpResponse {
     fn from(e: Error) -> Self {

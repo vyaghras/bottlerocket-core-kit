@@ -2,7 +2,9 @@
 //! controller in the MVC model.
 
 use bottlerocket_release::BottlerocketRelease;
+use model::generator::{RawSettingsGenerator, SettingsGenerator, Strength};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use snafu::{ensure, OptionExt, ResultExt};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
@@ -10,9 +12,12 @@ use std::process::{Command, Stdio};
 
 use crate::server::error::{self, Result};
 use actix_web::HttpResponse;
+use datastore::constraints_check::{ApprovedWrite, ConstraintCheckResult};
 use datastore::deserialization::{from_map, from_map_with_prefix};
 use datastore::serialization::to_pairs_with_prefix;
-use datastore::{deserialize_scalar, Committed, DataStore, Key, KeyType, ScalarError, Value};
+use datastore::{
+    deserialize_scalar, serialize_scalar, Committed, DataStore, Key, KeyType, ScalarError, Value,
+};
 use model::{ConfigurationFiles, Services, Settings};
 use num::FromPrimitive;
 use std::os::unix::process::ExitStatusExt;
@@ -42,6 +47,51 @@ where
     };
     get_prefix(datastore, &pending, "settings.", None)
         .map(|maybe_settings| maybe_settings.unwrap_or_default())
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(transparent)]
+pub(crate) struct SettingsMetadata {
+    pub(crate) inner: HashMap<String, HashMap<String, String>>,
+}
+
+impl From<HashMap<Key, HashMap<Key, String>>> for SettingsMetadata {
+    fn from(transaction_metadata: HashMap<Key, HashMap<Key, String>>) -> Self {
+        let mut metadata = HashMap::new();
+        for (key, value) in transaction_metadata {
+            let mut inner_map = HashMap::new();
+            for (inner_key, inner_value) in value {
+                inner_map.insert(inner_key.name().clone(), inner_value);
+            }
+            metadata.insert(key.name().clone(), inner_map);
+        }
+
+        SettingsMetadata { inner: metadata }
+    }
+}
+
+/// Gets the metadata for metadata_key_name in the given transaction
+/// Returns all metadata if metadata_key_name is None
+pub(crate) fn get_transaction_metadata<D, S>(
+    datastore: &D,
+    transaction: S,
+    metadata_key_name: Option<String>,
+) -> Result<SettingsMetadata>
+where
+    D: DataStore,
+    S: Into<String>,
+{
+    let pending = Committed::Pending {
+        tx: transaction.into(),
+    };
+
+    let metadata = datastore
+        .get_metadata_prefix("settings.", &pending, &metadata_key_name)
+        .with_context(|_| error::DataStoreSnafu {
+            op: format!("get_metadata_prefix '{}' for {:?}", "settings.", pending),
+        })?;
+
+    Ok(SettingsMetadata::from(metadata))
 }
 
 /// Deletes the transaction from the data store, removing any uncommitted settings under that
@@ -364,6 +414,7 @@ pub(crate) fn set_settings<D: DataStore>(
     datastore: &mut D,
     settings: &Settings,
     transaction: &str,
+    strength: Strength,
 ) -> Result<()> {
     trace!("Serializing Settings to write to data store");
     let settings_json = serde_json::to_value(settings).context(error::SettingsToJsonSnafu)?;
@@ -372,6 +423,32 @@ pub(crate) fn set_settings<D: DataStore>(
     let pending = Committed::Pending {
         tx: transaction.into(),
     };
+
+    info!("Writing Metadata to pending transaction in datastore.");
+
+    // Write the metadata to pending transaction as provided.
+    // We will validate this transaction while committing.
+    for key in pairs.keys() {
+        let metadata_key_strength =
+            Key::new(KeyType::Meta, "strength").context(error::NewKeySnafu {
+                key_type: "meta",
+                name: "strength",
+            })?;
+
+        let metadata_value = datastore::serialize_scalar::<_, ScalarError>(&strength.to_string())
+            .with_context(|_| error::SerializeSnafu {})?;
+
+        datastore
+            .set_metadata(&metadata_key_strength, key, metadata_value, &pending)
+            .context(error::DataStoreSnafu {
+                op: "Failure in setting metadata.",
+            })?;
+    }
+
+    info!(
+        "Writing Settings to pending transaction in datastore: {:?}",
+        pairs
+    );
     datastore
         .set_keys(&pairs, &pending)
         .context(error::DataStoreSnafu { op: "set_keys" })
@@ -398,7 +475,7 @@ pub(crate) fn get_metadata_for_data_keys<D: DataStore, S: AsRef<str>>(
             key_type: "data",
             name: *data_key_str,
         })?;
-        let value_str = match datastore.get_metadata(&md_key, &data_key) {
+        let value_str = match datastore.get_metadata(&md_key, &data_key, &Committed::Live) {
             Ok(Some(v)) => v,
             // TODO: confirm we want to skip requested keys if not populated, or error
             Ok(None) => continue,
@@ -420,21 +497,93 @@ pub(crate) fn get_metadata_for_data_keys<D: DataStore, S: AsRef<str>>(
     Ok(result)
 }
 
-/// Gets the value of a metadata key everywhere it's found in the data store.  Returns a mapping
-/// of data key to the metadata value associated with the requested key.
-pub(crate) fn get_metadata_for_all_data_keys<D: DataStore, S: AsRef<str>>(
+// Sort the given settings hashmap where a parent
+// key is always before its successors.
+fn sort_metadata(metadata: HashMap<Key, HashMap<Key, String>>) -> Vec<(Key, HashMap<Key, String>)> {
+    let mut metadata_sorted: Vec<_> = metadata.into_iter().collect();
+    metadata_sorted.sort_by(|(k1, _), (k2, _)| k1.segments().len().cmp(&k2.segments().len()));
+    metadata_sorted.to_vec()
+}
+
+/// Settings generators can be dynamically applied to a set of settings.
+///
+/// This function resolves a dynamically expanded generator into a finite set of
+/// distinct settings generators.
+fn expand_setting_generator<D: DataStore>(
+    datastore: &D,
+    data_key: &Key,
+    raw_setting_generator: RawSettingsGenerator,
+    result: &mut HashMap<String, Value>,
+) -> Result<()> {
+    let depth = raw_setting_generator.depth;
+    let metadata_value = serde_json::to_value(SettingsGenerator::from(raw_setting_generator))
+        .context(error::SerializeSnafu)?;
+
+    if depth == 0 {
+        // If the depth is 0, we don't need to process the successors
+        result.insert(data_key.to_string(), metadata_value);
+        return Ok(());
+    }
+
+    // Get the leaf of the data key
+    let segments = data_key.segments();
+    let data_key_for_metadata = segments.last().context(error::InvalidKeyPairSnafu {
+        input: data_key.name(),
+    })?;
+
+    // Extract the prefix leaving the leaf
+    let parent_key =
+        Key::from_segments(KeyType::Data, &segments[..segments.len().saturating_sub(1)]).context(
+            error::DataStoreSnafu {
+                op: format!("Unable to create key from segments: {:?}", segments),
+            },
+        )?;
+
+    let all_child_keys = datastore
+        .list_populated_keys(parent_key.name(), &Committed::Live)
+        .context(error::DataStoreSnafu {
+            op: format!(
+                "Unable to get the populated keys for given prefix: {}",
+                parent_key.name()
+            ),
+        })?;
+
+    let final_segment_length = segments.len() + depth as usize;
+
+    let child_keys_at_target_depth = all_child_keys
+        .iter()
+        .filter_map(|child_key| child_key.segments().get(..(final_segment_length)))
+        .map(|child_segments| {
+            let mut child_segments = child_segments.to_vec();
+            child_segments.pop();
+            child_segments.push(data_key_for_metadata.to_string());
+            Key::from_segments(KeyType::Data, &child_segments).context(error::DataStoreSnafu {
+                op: "Key from segments",
+            })
+        })
+        .collect::<Result<HashSet<_>>>()?;
+
+    for child_key in child_keys_at_target_depth {
+        result.insert(child_key.to_string(), metadata_value.to_owned());
+    }
+
+    Ok(())
+}
+
+/// Gets the value of a settings-generator metadata key everywhere it's found in the data store
+/// and returns a mapping of data key to the metadata value associated with the requested key.
+pub(crate) fn get_settings_generator_metadata<D: DataStore, S: AsRef<str>>(
     datastore: &D,
     md_key_str: S,
 ) -> Result<HashMap<String, Value>> {
     trace!("Getting metadata '{}'", md_key_str.as_ref());
-    let meta_map = datastore
-        .get_metadata_prefix("", &Some(md_key_str))
-        .context(error::DataStoreSnafu {
-            op: "get_metadata_prefix",
-        })?;
+    let meta_map = get_metadata_for_all_data_keys(datastore, md_key_str.as_ref())?;
+
+    // Sort the returned metadata so that we process parent first.
+    let sorted_metadata = sort_metadata(meta_map);
 
     let mut result = HashMap::new();
-    for (data_key, metadata) in meta_map {
+    for (data_key, metadata) in sorted_metadata {
         for (meta_key, value_str) in metadata {
             trace!("Deserializing scalar from metadata");
             let value: Value = deserialize_scalar::<_, ScalarError>(&value_str).context(
@@ -443,10 +592,150 @@ pub(crate) fn get_metadata_for_all_data_keys<D: DataStore, S: AsRef<str>>(
                     data_key: data_key.name(),
                 },
             )?;
-            result.insert(data_key.to_string(), value);
+
+            let setting_generator: RawSettingsGenerator = serde_json::from_value(value.clone())
+                .context(error::DeserializeSettingsGeneratorSnafu)?;
+
+            trace!(
+                "Getting the metadata for key {:?} with setting generator {:?}",
+                data_key,
+                setting_generator
+            );
+            expand_setting_generator(datastore, &data_key, setting_generator, &mut result)?;
         }
     }
+
     Ok(result)
+}
+
+/// Gets the value of a metadata key everywhere it's found in the data store.  Returns a mapping
+/// of data key to the metadata Key and value associated with the requested key.
+pub(crate) fn get_metadata_for_all_data_keys<D: DataStore, S: AsRef<str>>(
+    datastore: &D,
+    md_key_str: S,
+) -> Result<HashMap<Key, HashMap<Key, String>>> {
+    trace!("Getting metadata '{}'", md_key_str.as_ref());
+    let result = datastore
+        .get_metadata_prefix("", &Committed::Live, &Some(md_key_str))
+        .context(error::DataStoreSnafu {
+            op: "get_metadata_prefix",
+        })?;
+
+    Ok(result)
+}
+
+// Parses and validates the settings and metadata in pending transaction and
+// returns the constraint check result containing approved settings and metadata to
+// commit to live transaction.
+// We will pass this function as argument to commit transaction function.
+fn datastore_transaction_check<D>(
+    datastore: &mut D,
+    committed: &Committed,
+) -> Result<ConstraintCheckResult>
+where
+    D: DataStore,
+{
+    // Get settings to commit from pending transaction
+    let settings_to_commit = datastore
+        .get_prefix("settings.", committed)
+        .context(error::DataStoreSnafu { op: "get_prefix" })?;
+
+    // Get metadata from pending transaction
+    let mut transaction_metadata = datastore
+        .get_metadata_prefix("settings.", committed, &None as &Option<&str>)
+        .context(error::DataStoreSnafu {
+            op: "get_metadata_prefix",
+        })?;
+
+    let mut metadata_to_commit: Vec<(Key, Key, String)> = Vec::new();
+
+    // Parse and validate all the metadata enteries from pending transaction
+    for (key, value) in transaction_metadata.iter_mut() {
+        for (metadata_key, metadata_value) in value {
+            // For now we are only processing the strength metadata from pending
+            // transaction to live
+            if metadata_key.name() != "strength" {
+                warn!(
+                    "Metadata key is {}, Skipping the commit as we only allow Strength metadata.",
+                    metadata_key.name()
+                );
+                continue;
+            }
+
+            // strength in pending transaction
+            let pending_strength =
+                deserialize_scalar::<Strength, ScalarError>(metadata_value.as_ref())
+                    .with_context(|_| error::DeserializeStrengthSnafu {})?;
+
+            // Get the setting strength in live
+            // get_metadata function returns Ok(None) in case strength does not exist
+            // We will consider this case as strength equals strong.
+            let committed_strength: Strength = datastore
+                .get_metadata(metadata_key, key, &Committed::Live)
+                .context(error::DataStoreSnafu { op: "get_metadata" })?
+                .map(|x| deserialize_scalar::<Strength, ScalarError>(x.as_ref()))
+                .transpose()
+                .context(error::DeserializeStrengthSnafu {})?
+                .unwrap_or_default();
+
+            let may_be_value = datastore
+                .get_key(key, &Committed::Live)
+                .context(error::DataStoreSnafu { op: "get_key" })?;
+
+            trace!(
+                "datastore_transaction_check: key: {:?}, metadata_key: {:?}, metadata_value: {:?}",
+                key.name(),
+                metadata_key.name(),
+                metadata_value
+            );
+
+            match (pending_strength, committed_strength, may_be_value) {
+                (Strength::Weak, Strength::Strong, None)
+                | (Strength::Strong, Strength::Weak, Some(..))
+                | (Strength::Strong, Strength::Weak, None) => {
+                    let met_value = serialize_scalar::<_, ScalarError>(&pending_strength)
+                        .with_context(|_| error::SerializeSnafu {})?;
+
+                    metadata_to_commit.push((metadata_key.clone(), key.clone(), met_value));
+                }
+                (Strength::Weak, Strength::Strong, Some(..)) => {
+                    // Do not change from strong to weak if setting exists
+                    // as the default strength is strong for a setting.
+                    return Ok(ConstraintCheckResult::Reject(format!(
+                        "Cannot change setting {} strength from strong to weak",
+                        key.name()
+                    )));
+                }
+                (Strength::Weak, Strength::Weak, ..) => {
+                    trace!("The strength for setting {} is already weak", key.name());
+                    continue;
+                }
+                (Strength::Strong, Strength::Strong, ..) => {
+                    trace!("The strength for setting {} is already strong", key.name());
+                    continue;
+                }
+            };
+        }
+    }
+
+    let approved_write = ApprovedWrite {
+        settings: settings_to_commit,
+        metadata: metadata_to_commit,
+    };
+
+    Ok(ConstraintCheckResult::from(Some(approved_write)))
+}
+
+/// Wrapper for our transaction constraint check that converts errors into the expected type
+fn datastore_transaction_check_wrapper<D>(
+    datastore: &mut D,
+    committed: &Committed,
+) -> Result<ConstraintCheckResult, Box<dyn std::error::Error + Send + Sync + 'static>>
+where
+    D: DataStore,
+{
+    datastore_transaction_check::<D>(datastore, committed)
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
 }
 
 /// Makes live any pending settings in the datastore, returning the changed keys.
@@ -455,7 +744,7 @@ where
     D: DataStore,
 {
     datastore
-        .commit_transaction(transaction)
+        .commit_transaction(transaction, &datastore_transaction_check_wrapper::<D>)
         .context(error::DataStoreSnafu { op: "commit" })
 }
 
@@ -786,7 +1075,7 @@ mod test {
         let mut ds = MemoryDataStore::new();
         let tx = "test transaction";
         let pending = Committed::Pending { tx: tx.into() };
-        set_settings(&mut ds, &settings, tx).unwrap();
+        set_settings(&mut ds, &settings, tx, Strength::Strong).unwrap();
 
         // Retrieve directly
         let key = Key::new(KeyType::Data, "settings.motd").unwrap();
@@ -805,6 +1094,7 @@ mod test {
                 &Key::new(KeyType::Meta, "my-meta").unwrap(),
                 &Key::new(KeyType::Data, data_key).unwrap(),
                 "\"json string\"",
+                &Committed::Live,
             )
             .unwrap();
         }
@@ -829,13 +1119,14 @@ mod test {
                 &Key::new(KeyType::Meta, "my-meta").unwrap(),
                 &Key::new(KeyType::Data, data_key).unwrap(),
                 "\"json string\"",
+                &Committed::Live,
             )
             .unwrap();
         }
 
         let expected = hashmap!(
-            "abc".to_string() => "json string".into(),
-            "def".to_string() => "json string".into(),
+            Key::new(KeyType::Data, "abc").unwrap() =>  hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+            Key::new(KeyType::Data, "def").unwrap() =>  hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
         );
         // Retrieve with helper
         let actual = get_metadata_for_all_data_keys(&ds, "my-meta").unwrap();
@@ -863,12 +1154,173 @@ mod test {
         get_settings(&ds, &Committed::Live).unwrap_err();
 
         // Commit, pending -> live
-        commit_transaction(&mut ds, tx).unwrap();
+        commit_transaction::<datastore::memory::MemoryDataStore>(&mut ds, tx).unwrap();
 
         // No more pending settings
         get_settings(&ds, &pending).unwrap_err();
         // Confirm live
         let settings = get_settings(&ds, &Committed::Live).unwrap();
         assert_eq!(extract!(settings.motd), Some("json string".into()));
+    }
+
+    #[test]
+    fn sorting_metadata_works() {
+        let metadata: HashMap<Key, HashMap<Key, String>> = hashmap!(
+            Key::new(KeyType::Data, "settings.a.b").unwrap() =>  hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+            Key::new(KeyType::Data, "settings.a.b.c").unwrap() =>  hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+            Key::new(KeyType::Data, "settings.a").unwrap() =>  hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+        );
+
+        let expected = vec![
+            (
+                Key::new(KeyType::Data, "settings.a").unwrap(),
+                hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+            ),
+            (
+                Key::new(KeyType::Data, "settings.a.b").unwrap(),
+                hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+            ),
+            (
+                Key::new(KeyType::Data, "settings.a.b.c").unwrap(),
+                hashmap!(Key::new(KeyType::Meta, "my-meta").unwrap() => "\"json string\"".into()),
+            ),
+        ];
+
+        let actual = sort_metadata(metadata);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn can_get_metadata_for_successor() {
+        let mut ds = MemoryDataStore::new();
+        let data_key = Key::new(KeyType::Data, "settings.abc.def").unwrap();
+        ds.set_metadata(
+            &Key::new(KeyType::Meta, "my-meta").unwrap(),
+            &data_key,
+            "\"json string\"",
+            &Committed::Live,
+        )
+        .unwrap();
+        ds.set_key(
+            &Key::new(KeyType::Data, "settings.abc.xyz.mode").unwrap(),
+            "\"once\"",
+            &Committed::Live,
+        )
+        .unwrap();
+        let mut result = HashMap::new();
+        let raw_setting_generator = RawSettingsGenerator {
+            command: "\"json string\"".to_owned(),
+            depth: 1,
+            strength: Strength::Weak,
+        };
+
+        let setting_generator = SettingsGenerator::from(raw_setting_generator.clone());
+
+        expand_setting_generator(&ds, &data_key, raw_setting_generator, &mut result).unwrap();
+
+        let expected = hashmap!("settings.abc.xyz.def".to_owned() => serde_json::to_value(setting_generator).unwrap());
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn expand_setting_generator_with_depth_zero() {
+        let mut ds = MemoryDataStore::new();
+        let data_key = Key::new(KeyType::Data, "settings.abc.def").unwrap();
+        ds.set_metadata(
+            &Key::new(KeyType::Meta, "my-meta").unwrap(),
+            &data_key,
+            "\"json string\"",
+            &Committed::Live,
+        )
+        .unwrap();
+        ds.set_key(
+            &Key::new(KeyType::Data, "settings.abc.xyz.mode").unwrap(),
+            "\"once\"",
+            &Committed::Live,
+        )
+        .unwrap();
+        let mut result = HashMap::new();
+        let raw_setting_generator = RawSettingsGenerator {
+            command: "\"json string\"".to_owned(),
+            depth: 0,
+            strength: Strength::Weak,
+        };
+
+        let setting_generator = SettingsGenerator::from(raw_setting_generator.clone());
+
+        expand_setting_generator(&ds, &data_key, raw_setting_generator, &mut result).unwrap();
+
+        let expected = hashmap!("settings.abc.def".to_owned() => serde_json::to_value(setting_generator).unwrap());
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_child_key_len() {
+        let mut ds = MemoryDataStore::new();
+        let data_key = Key::new(KeyType::Data, "settings.abc.def").unwrap();
+        ds.set_metadata(
+            &Key::new(KeyType::Meta, "my-meta").unwrap(),
+            &data_key,
+            "\"json string\"",
+            &Committed::Live,
+        )
+        .unwrap();
+
+        ds.set_key(
+            &Key::new(KeyType::Data, "settings.abc.def").unwrap(),
+            "\"once\"",
+            &Committed::Live,
+        )
+        .unwrap();
+
+        let mut result = HashMap::new();
+        let raw_setting_generator = RawSettingsGenerator {
+            command: "\"json string\"".to_owned(),
+            depth: 1,
+            strength: Strength::Weak,
+        };
+
+        expand_setting_generator(&ds, &data_key, raw_setting_generator, &mut result).unwrap();
+
+        for key_name in result.keys() {
+            let key = Key::new(KeyType::Data, key_name).unwrap();
+            assert_eq!(key.segments().len(), 4);
+        }
+    }
+
+    #[test]
+    fn test_dynamic_setting_is_only_applied_on_descendants() {
+        let mut ds = MemoryDataStore::new();
+        let data_key = Key::new(KeyType::Data, "settings.abc.def").unwrap();
+
+        ds.set_key(
+            &Key::new(KeyType::Data, "settings.abc.some-value").unwrap(),
+            "\"parent\"",
+            &Committed::Live,
+        )
+        .unwrap();
+
+        ds.set_key(
+            &Key::new(KeyType::Data, "settings.abc.some-map.xyz").unwrap(),
+            "\"child\"",
+            &Committed::Live,
+        )
+        .unwrap();
+
+        let mut result = HashMap::new();
+        let raw_setting_generator = RawSettingsGenerator {
+            command: "\"json string\"".to_owned(),
+            depth: 1,
+            strength: Strength::Weak,
+        };
+
+        let setting_generator = SettingsGenerator::from(raw_setting_generator.clone());
+        let expected = hashmap!("settings.abc.some-map.def".to_owned() => serde_json::to_value(setting_generator).unwrap());
+
+        expand_setting_generator(&ds, &data_key, raw_setting_generator.clone(), &mut result)
+            .unwrap();
+
+        assert_eq!(expected, result);
+        assert!(!result.contains_key("settings.abc.def"))
     }
 }
