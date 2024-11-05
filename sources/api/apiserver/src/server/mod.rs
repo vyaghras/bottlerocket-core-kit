@@ -11,13 +11,14 @@ pub use error::Error;
 use actix_web::{
     body::BoxBody, error::ResponseError, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
+use core::str;
 use datastore::{serialize_scalar, Committed, FilesystemDataStore, Key, KeyType, Value};
 use error::Result;
 use fs2::FileExt;
 use http::StatusCode;
 use log::info;
 use model::ephemeral_storage::{Bind, Init};
-use model::{ConfigurationFiles, Model, Report, Services, Settings};
+use model::{ConfigurationFiles, Model, Report, Services, Settings, SettingsGenerator, Strength};
 use nix::unistd::{chown, Gid};
 use serde::{Deserialize, Serialize};
 use snafu::{ensure, OptionExt, ResultExt};
@@ -28,6 +29,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use std::sync;
 use thar_be_updates::status::{UpdateStatus, UPDATE_LOCKFILE};
 use tokio::process::Command as AsyncCommand;
@@ -106,6 +108,14 @@ where
                     .route(
                         "/commit_and_apply",
                         web::post().to(commit_transaction_and_apply),
+                    ),
+            )
+            .service(
+                web::scope("/v2")
+                    .route("/tx", web::get().to(get_transaction_v2))
+                    .route(
+                        "/metadata/setting-generators",
+                        web::get().to(get_setting_generators_v2),
                     ),
             )
             .service(web::scope("/os").route("", web::get().to(get_os_info)))
@@ -304,8 +314,9 @@ async fn patch_settings(
     data: web::Data<SharedData>,
 ) -> Result<HttpResponse> {
     let transaction = transaction_name(&query);
+    let strength = query_strength(&query)?;
     let mut datastore = data.ds.write().ok().context(error::DataStoreLockSnafu)?;
-    controller::set_settings(&mut *datastore, &settings, transaction)?;
+    controller::set_settings(&mut *datastore, &settings, transaction, strength)?;
     Ok(HttpResponse::NoContent().finish()) // 204
 }
 
@@ -318,13 +329,14 @@ async fn patch_settings_key_pair(
     // Convert to a Map of Key Value pairs.
     let settings_key_pair_map = construct_key_pair_map(&settings.request_payload)?;
     let transaction = transaction_name(&query);
+    let strength = query_strength(&query)?;
     let mut datastore = data.ds.write().ok().context(error::DataStoreLockSnafu)?;
     // We massage the values in the input key pair map.
     // The data store deserialization code understands how to turn the key names
     // (a.b.c) and serialized values into the nested Settings structure.
     let settings_model = datastore::deserialization::from_map(&settings_key_pair_map)
         .context(error::DeserializeMapSnafu)?;
-    controller::set_settings(&mut *datastore, &settings_model, transaction)?;
+    controller::set_settings(&mut *datastore, &settings_model, transaction, strength)?;
     Ok(HttpResponse::NoContent().finish()) // 204
 }
 
@@ -342,7 +354,27 @@ async fn get_transaction(
     let transaction = transaction_name(&query);
     let datastore = data.ds.read().ok().context(error::DataStoreLockSnafu)?;
     let data = controller::get_transaction(&*datastore, transaction)?;
+
     Ok(SettingsResponse(data))
+}
+
+/// Get any pending settings in the given transaction, or the "default" transaction if unspecified.
+async fn get_transaction_v2(
+    query: web::Query<HashMap<String, String>>,
+    data: web::Data<SharedData>,
+) -> Result<SettingsResponseWithMetadata> {
+    let transaction = transaction_name(&query);
+    let datastore = data.ds.read().ok().context(error::DataStoreLockSnafu)?;
+    let settings = controller::get_transaction(&*datastore, transaction)?;
+    let transaction_metadata =
+        controller::get_transaction_metadata(&*datastore, transaction, None)?;
+
+    let data = SettingsWithMetadata {
+        settings,
+        metadata: transaction_metadata.inner,
+    };
+
+    Ok(SettingsResponseWithMetadata(data))
 }
 
 /// Delete the given transaction, or the "default" transaction if unspecified.
@@ -365,7 +397,10 @@ async fn commit_transaction(
     let transaction = transaction_name(&query);
     let mut datastore = data.ds.write().ok().context(error::DataStoreLockSnafu)?;
 
-    let changes = controller::commit_transaction(&mut *datastore, transaction)?;
+    let changes = controller::commit_transaction::<
+        datastore::filesystem::FilesystemDataStore,
+        String,
+    >(&mut *datastore, transaction)?;
 
     if changes.is_empty() {
         return error::CommitWithNoPendingSnafu.fail();
@@ -397,7 +432,10 @@ async fn commit_transaction_and_apply(
     let transaction = transaction_name(&query);
     let mut datastore = data.ds.write().ok().context(error::DataStoreLockSnafu)?;
 
-    let changes = controller::commit_transaction(&mut *datastore, transaction)?;
+    let changes = controller::commit_transaction::<
+        datastore::filesystem::FilesystemDataStore,
+        String,
+    >(&mut *datastore, transaction)?;
 
     if changes.is_empty() {
         return error::CommitWithNoPendingSnafu.fail();
@@ -453,6 +491,43 @@ async fn get_affected_services(
 
 /// Get all settings that have setting-generator metadata
 async fn get_setting_generators(data: web::Data<SharedData>) -> Result<MetadataResponse> {
+    let datastore = data.ds.read().ok().context(error::DataStoreLockSnafu)?;
+    let metadata_for_keys =
+        controller::get_metadata_for_all_data_keys(&*datastore, "setting-generator")?;
+    let mut resp: HashMap<String, Value> = HashMap::new();
+
+    for (key, value) in metadata_for_keys.iter() {
+        match value {
+            Value::String(command) => {
+                resp.insert(
+                    key.to_string(),
+                    serde_json::Value::String(command.to_string()),
+                );
+            }
+            Value::Object(obj) => {
+                let setting_generator: SettingsGenerator =
+                    serde_json::from_value(Value::Object(obj.clone()))
+                        .context(error::DeserializeSettingsGeneratorSnafu)?;
+                // Not return weak setting generators because the customers using
+                // v1 of this api are not aware of the strength.
+                if setting_generator.strength == Strength::Strong {
+                    resp.insert(
+                        key.to_string(),
+                        serde_json::Value::String(setting_generator.command),
+                    );
+                }
+            }
+            // We know it is not possible, as in default we set the setting-generator
+            // as string or object
+            _ => {
+                error!("Invalid value type for key '{}': {:?}", key, value);
+            }
+        }
+    }
+    Ok(MetadataResponse(resp))
+}
+
+async fn get_setting_generators_v2(data: web::Data<SharedData>) -> Result<MetadataResponse> {
     let datastore = data.ds.read().ok().context(error::DataStoreLockSnafu)?;
     let resp = controller::get_metadata_for_all_data_keys(&*datastore, "setting-generator")?;
     Ok(MetadataResponse(resp))
@@ -753,8 +828,19 @@ fn transaction_name(query: &web::Query<HashMap<String, String>>) -> &str {
     query.get("tx").map(String::as_str).unwrap_or("default")
 }
 
-// Helpers methods for the 'set' API
+fn query_strength(query: &web::Query<HashMap<String, String>>) -> Result<Strength> {
+    if let Some(strength) = query.get("strength") {
+        Ok(
+            Strength::from_str(strength).context(error::InvalidStrengthSnafu {
+                strength: strength.to_string(),
+            })?,
+        )
+    } else {
+        Ok(Strength::default())
+    }
+}
 
+// Helpers methods for the 'set' API
 fn construct_key_pair_map(settings_key_pair_vec: &Vec<String>) -> Result<HashMap<Key, String>> {
     let mut settings_key_pair_map = HashMap::new();
     for settings_key_pair in settings_key_pair_vec {
@@ -892,6 +978,9 @@ impl ResponseError for error::Error {
             UpdateLockOpen { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ReportExec { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ReportResult { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+            DeserializeSettingsGenerator { .. } => StatusCode::BAD_REQUEST,
+            DeSerialize { .. } => StatusCode::BAD_REQUEST,
+            InvalidStrength { .. } => StatusCode::BAD_REQUEST,
         };
 
         HttpResponse::build(status_code).body(self.to_string())
@@ -943,6 +1032,16 @@ macro_rules! impl_responder_for {
 /// those results into a Model/BottlerocketRelease would fail, so it's just intended for viewing.)
 struct ModelResponse(serde_json::Value);
 impl_responder_for!(ModelResponse, self, self.0);
+
+/// This lets us respond from our handler methods with a Settings (or Result<Settings>)
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+struct SettingsWithMetadata {
+    settings: Settings,
+    metadata: HashMap<String, HashMap<String, String>>,
+}
+
+struct SettingsResponseWithMetadata(SettingsWithMetadata);
+impl_responder_for!(SettingsResponseWithMetadata, self, self.0);
 
 /// This lets us respond from our handler methods with a Settings (or Result<Settings>)
 struct SettingsResponse(Settings);

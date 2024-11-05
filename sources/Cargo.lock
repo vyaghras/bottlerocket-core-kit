@@ -438,6 +438,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "serde_plain",
  "simple-settings-plugin",
  "simplelog",
  "snafu",

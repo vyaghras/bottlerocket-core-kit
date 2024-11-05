@@ -92,6 +92,9 @@ pub enum Error {
         source: datastore::deserialization::Error,
     },
 
+    #[snafu(display("Unable to deserialize data: {}", source))]
+    DeSerialize { source: serde_json::Error },
+
     #[snafu(display("Unable to serialize data: {}", source))]
     Serialize { source: serde_json::Error },
 
@@ -239,6 +242,19 @@ pub enum Error {
     UpdateInfoParse {
         stdout: Vec<u8>,
         source: serde_json::Error,
+    },
+
+    #[snafu(display("Error deserializing response value to SettingsGenerator: {}", source))]
+    DeserializeSettingsGenerator { source: serde_json::Error },
+
+    #[snafu(display(
+        "Provided strength is not one of weak or strong. The given strength is: {}. {}",
+        strength,
+        source
+    ))]
+    InvalidStrength {
+        strength: String,
+        source: serde_plain::Error,
     },
 }
 

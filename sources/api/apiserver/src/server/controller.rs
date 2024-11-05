@@ -3,6 +3,7 @@
 
 use bottlerocket_release::BottlerocketRelease;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use snafu::{ensure, OptionExt, ResultExt};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
@@ -10,10 +11,13 @@ use std::process::{Command, Stdio};
 
 use crate::server::error::{self, Result};
 use actix_web::HttpResponse;
+use datastore::constraints_check::{ApprovedWrite, ConstraintCheckResult};
 use datastore::deserialization::{from_map, from_map_with_prefix};
 use datastore::serialization::to_pairs_with_prefix;
-use datastore::{deserialize_scalar, Committed, DataStore, Key, KeyType, ScalarError, Value};
-use model::{ConfigurationFiles, Services, Settings};
+use datastore::{
+    deserialize_scalar, serialize_scalar, Committed, DataStore, Key, KeyType, ScalarError, Value,
+};
+use model::{ConfigurationFiles, Services, Settings, Strength};
 use num::FromPrimitive;
 use std::os::unix::process::ExitStatusExt;
 use thar_be_updates::error::TbuErrorStatus;
@@ -42,6 +46,51 @@ where
     };
     get_prefix(datastore, &pending, "settings.", None)
         .map(|maybe_settings| maybe_settings.unwrap_or_default())
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(transparent)]
+pub(crate) struct SettingsMetadata {
+    pub(crate) inner: HashMap<String, HashMap<String, String>>,
+}
+
+impl From<HashMap<Key, HashMap<Key, String>>> for SettingsMetadata {
+    fn from(transaction_metadata: HashMap<Key, HashMap<Key, String>>) -> Self {
+        let mut metadata = HashMap::new();
+        for (key, value) in transaction_metadata {
+            let mut inner_map = HashMap::new();
+            for (inner_key, inner_value) in value {
+                inner_map.insert(inner_key.name().clone(), inner_value);
+            }
+            metadata.insert(key.name().clone(), inner_map);
+        }
+
+        SettingsMetadata { inner: metadata }
+    }
+}
+
+/// Gets the metadata for metadata_key_name in the given transaction
+/// Returns all metadata if metadata_key_name is None
+pub(crate) fn get_transaction_metadata<D, S>(
+    datastore: &D,
+    transaction: S,
+    metadata_key_name: Option<String>,
+) -> Result<SettingsMetadata>
+where
+    D: DataStore,
+    S: Into<String>,
+{
+    let pending = Committed::Pending {
+        tx: transaction.into(),
+    };
+
+    let metadata = datastore
+        .get_metadata_prefix("settings.", &pending, &metadata_key_name)
+        .with_context(|_| error::DataStoreSnafu {
+            op: format!("get_metadata_prefix '{}' for {:?}", "settings.", pending),
+        })?;
+
+    Ok(SettingsMetadata::from(metadata))
 }
 
 /// Deletes the transaction from the data store, removing any uncommitted settings under that
@@ -364,6 +413,7 @@ pub(crate) fn set_settings<D: DataStore>(
     datastore: &mut D,
     settings: &Settings,
     transaction: &str,
+    strength: Strength,
 ) -> Result<()> {
     trace!("Serializing Settings to write to data store");
     let settings_json = serde_json::to_value(settings).context(error::SettingsToJsonSnafu)?;
@@ -372,6 +422,96 @@ pub(crate) fn set_settings<D: DataStore>(
     let pending = Committed::Pending {
         tx: transaction.into(),
     };
+
+    info!("Writing Metadata to data store");
+    match strength {
+        Strength::Strong => {
+            // Get keys in the request
+            let keys: HashSet<&str> = pairs.iter().map(|pair| pair.0.name().as_str()).collect();
+            // Get strength metadata for the keys from live
+            let committed_strength_live = get_metadata_for_data_keys(datastore, "strength", &keys)?;
+
+            // Change the weak strength to strong if the committed strength is weak and requested strength is strong
+            for (key, value) in committed_strength_live {
+                // if the strength is weak then we need to change it to strong
+                if value == Strength::Weak.to_string() {
+                    let data_key =
+                        Key::new(KeyType::Data, key.clone()).context(error::NewKeySnafu {
+                            key_type: "data",
+                            name: key.clone(),
+                        })?;
+
+                    let metadata_key_strength =
+                        Key::new(KeyType::Meta, "strength").context(error::NewKeySnafu {
+                            key_type: "meta",
+                            name: "strength",
+                        })?; // change this to name as strength and value as weak or strong
+
+                    let metadata_value = datastore::serialize_scalar::<_, ScalarError>(
+                        &Strength::Strong.to_string(),
+                    )
+                    .with_context(|_| error::SerializeSnafu {})?;
+
+                    datastore
+                        .set_metadata(&metadata_key_strength, &data_key, metadata_value, &pending)
+                        .context(error::DataStoreSnafu {
+                            op: "Change strength metadata key to strong",
+                        })?;
+                }
+            }
+        }
+        Strength::Weak => {
+            for key in pairs.keys() {
+                // The get key funtion returns Ok(None) in case if the path does not exist
+                // and error if some path exist and some error occurred in fetching
+                // Hence we we will return error in case of error
+                // from get key function and continue to add/change to weak key
+                // if the value is None.
+                let value = datastore
+                    .get_key(key, &Committed::Live)
+                    .context(error::DataStoreSnafu { op: "get_key" })?;
+
+                // Get metadata value for the key
+                // If strength does not exist this hashmap will be empty
+                // and if strength exist this hashmap will return HashMap<Key, Metadata_value>
+                let mut keys_to_get_metadata: HashSet<&str> = HashSet::new();
+                keys_to_get_metadata.insert(key.name().as_str());
+                let strength_pair =
+                    get_metadata_for_data_keys(datastore, "strength", &keys_to_get_metadata)?;
+
+                let is_setting_strong = strength_pair.is_empty()
+                    || strength_pair.get(key.name().as_str())
+                        == Some(&serde_json::Value::String(Strength::Strong.to_string()));
+
+                // We need to log that we are not changing the strength from strong to weak
+                // and continue for other settings.
+                if value.is_some() && is_setting_strong {
+                    warn!("Trying to change the strength from strong to weak for key: {}, Operation ignored", key.name());
+                    continue;
+                }
+
+                // If the strength and setting both does not exist and requested strength is weak
+                // Set strength metadata.
+                let metadata_key =
+                    Key::new(KeyType::Meta, "strength").context(error::NewKeySnafu {
+                        key_type: "meta",
+                        name: "strength",
+                    })?;
+
+                let metadata_value =
+                    datastore::serialize_scalar::<_, ScalarError>(&Strength::Weak.to_string())
+                        .with_context(|_| error::SerializeSnafu {})?;
+
+                datastore
+                    .set_metadata(&metadata_key, key, metadata_value, &pending)
+                    .context(error::DataStoreSnafu {
+                        op: "create strength metadata key as weak",
+                    })?;
+            }
+        }
+    };
+
+    info!("Writing Settings to data store: {:?}", pairs);
     datastore
         .set_keys(&pairs, &pending)
         .context(error::DataStoreSnafu { op: "set_keys" })
@@ -398,7 +538,7 @@ pub(crate) fn get_metadata_for_data_keys<D: DataStore, S: AsRef<str>>(
             key_type: "data",
             name: *data_key_str,
         })?;
-        let value_str = match datastore.get_metadata(&md_key, &data_key) {
+        let value_str = match datastore.get_metadata(&md_key, &data_key, &Committed::Live) {
             Ok(Some(v)) => v,
             // TODO: confirm we want to skip requested keys if not populated, or error
             Ok(None) => continue,
@@ -428,7 +568,7 @@ pub(crate) fn get_metadata_for_all_data_keys<D: DataStore, S: AsRef<str>>(
 ) -> Result<HashMap<String, Value>> {
     trace!("Getting metadata '{}'", md_key_str.as_ref());
     let meta_map = datastore
-        .get_metadata_prefix("", &Some(md_key_str))
+        .get_metadata_prefix("", &Committed::Live, &Some(md_key_str))
         .context(error::DataStoreSnafu {
             op: "get_metadata_prefix",
         })?;
@@ -449,13 +589,122 @@ pub(crate) fn get_metadata_for_all_data_keys<D: DataStore, S: AsRef<str>>(
     Ok(result)
 }
 
-/// Makes live any pending settings in the datastore, returning the changed keys.
-pub(crate) fn commit_transaction<D>(datastore: &mut D, transaction: &str) -> Result<HashSet<Key>>
+// Parses and validates the settings and metadata in pending transaction and
+// returns the constraint check result containing approved settings and metadata to
+// commit to live transaction.
+// We will pass this function as argument to commit transaction function.
+fn check_constraints<D, S>(
+    datastore: &mut D,
+    committed: &Committed,
+) -> datastore::Result<ConstraintCheckResult>
 where
     D: DataStore,
+    S: Into<String> + AsRef<str>,
+{
+    // Get settings to commit from pending transaction
+    let settings_to_commit = datastore.get_prefix("settings.", committed)?;
+
+    // Get metadata from pending transaction
+    let mut transaction_metadata =
+        datastore.get_metadata_prefix("settings.", committed, &None as &Option<&str>)?;
+
+    // Vector(metadata_key, key, value)
+    let mut metadata_to_commit: Vec<(Key, Key, String)> = Vec::new();
+
+    // Parse and validate all the metadata enteries from pending transaction
+    for (key, value) in transaction_metadata.iter_mut() {
+        for (metadata_key, metadata_value) in value {
+            // For now we are only processing the strength metadata from pending
+            // transaction to live
+            if metadata_key.name() != "strength" {
+                continue;
+            }
+
+            // strength in pending transaction
+            let pending_strength: String =
+                deserialize_scalar::<_, ScalarError>(&metadata_value.clone())
+                    .with_context(|_| datastore::error::DeSerializeSnafu {})?;
+
+            let pending_strength: Strength =
+                pending_strength
+                    .parse::<Strength>()
+                    .context(datastore::error::ParseSnafu {
+                        strength: pending_strength,
+                    })?;
+
+            // Get the setting strength in live
+            // get_metadata function returns Ok(None) in case strength does not exist
+            // We will consider this case as strength equals strong.
+            let committed_strength: Strength = datastore
+                .get_metadata(metadata_key, key, &Committed::Live)?
+                .map(|x| x.parse::<Strength>())
+                .transpose()
+                .context(datastore::error::TransposeSnafu)?
+                .unwrap_or_default();
+
+            // The get key funtion returns Ok(None) in case if the path does not exist
+            // and error if some path exist and some error occurred in fetching
+            // Hence we we will return error in case of error
+            // from get key function and continue to add/change to weak key
+            // if the value is None.
+            let value = datastore.get_key(key, &Committed::Live)?;
+
+            trace!(
+                "check_constraints: key: {:?}, metadata_key: {:?}, metadata_value: {:?}",
+                key.name(),
+                metadata_key.name(),
+                metadata_value
+            );
+
+            match (pending_strength, committed_strength) {
+                (Strength::Weak, Strength::Strong) => {
+                    // Do not change from strong to weak if setting exists
+                    // otherwise commit strength metadata with value as "weak"
+                    if value.is_some() {
+                        return datastore::error::DisallowStrongToWeakStrengthSnafu {
+                            key: key.name(),
+                        }
+                        .fail();
+                    } else {
+                        let met_value = serialize_scalar::<_, ScalarError>(&pending_strength)
+                            .with_context(|_| datastore::error::SerializeSnafu {})?;
+
+                        metadata_to_commit.push((metadata_key.clone(), key.clone(), met_value));
+                    }
+                }
+                (Strength::Strong, Strength::Weak) => {
+                    let met_value = serialize_scalar::<_, ScalarError>(&pending_strength)
+                        .with_context(|_| datastore::error::SerializeSnafu {})?;
+                    metadata_to_commit.push((metadata_key.clone(), key.clone(), met_value));
+                }
+                (Strength::Weak, Strength::Weak) => {
+                    trace!("The strength for setting {} is already weak", key.name());
+                    continue;
+                }
+                (Strength::Strong, Strength::Strong) => {
+                    trace!("The strength for setting {} is already strong", key.name());
+                    continue;
+                }
+            };
+        }
+    }
+
+    let approved_write = ApprovedWrite {
+        settings: settings_to_commit,
+        metadata: metadata_to_commit,
+    };
+
+    Ok(ConstraintCheckResult::from(Some(approved_write)))
+}
+
+/// Makes live any pending settings in the datastore, returning the changed keys.
+pub(crate) fn commit_transaction<D, S>(datastore: &mut D, transaction: &str) -> Result<HashSet<Key>>
+where
+    D: DataStore,
+    S: Into<String> + AsRef<str>,
 {
     datastore
-        .commit_transaction(transaction)
+        .commit_transaction(transaction, &check_constraints::<D, S>)
         .context(error::DataStoreSnafu { op: "commit" })
 }
 
@@ -786,7 +1035,7 @@ mod test {
         let mut ds = MemoryDataStore::new();
         let tx = "test transaction";
         let pending = Committed::Pending { tx: tx.into() };
-        set_settings(&mut ds, &settings, tx).unwrap();
+        set_settings(&mut ds, &settings, tx, Strength::Strong).unwrap();
 
         // Retrieve directly
         let key = Key::new(KeyType::Data, "settings.motd").unwrap();
@@ -805,6 +1054,7 @@ mod test {
                 &Key::new(KeyType::Meta, "my-meta").unwrap(),
                 &Key::new(KeyType::Data, data_key).unwrap(),
                 "\"json string\"",
+                &Committed::Live,
             )
             .unwrap();
         }
@@ -829,6 +1079,7 @@ mod test {
                 &Key::new(KeyType::Meta, "my-meta").unwrap(),
                 &Key::new(KeyType::Data, data_key).unwrap(),
                 "\"json string\"",
+                &Committed::Live,
             )
             .unwrap();
         }
@@ -863,9 +1114,9 @@ mod test {
         get_settings(&ds, &Committed::Live).unwrap_err();
 
         // Commit, pending -> live
-        commit_transaction(&mut ds, tx).unwrap();
+        commit_transaction::<datastore::memory::MemoryDataStore, String>(&mut ds, tx).unwrap();
 
-        // No more pending settings
+        // // No more pending settings
         get_settings(&ds, &pending).unwrap_err();
         // Confirm live
         let settings = get_settings(&ds, &Committed::Live).unwrap();

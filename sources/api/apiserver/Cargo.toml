@@ -27,6 +27,7 @@ num.workspace = true
 rand = { workspace = true, features = ["default"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_plain.workspace = true
 simplelog.workspace = true
 snafu.workspace = true
 thar-be-updates.workspace = true
