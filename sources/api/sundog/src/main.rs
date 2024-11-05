@@ -23,6 +23,7 @@ use tokio::process::Command as AsyncCommand;
 
 use datastore::serialization::to_pairs_with_prefix;
 use datastore::{self, deserialization, Key, KeyType};
+use model::{SettingsGenerator, Strength};
 
 // Limit settings generator execution to at most 6 minutes to prevent boot from hanging for too long.
 const SETTINGS_GENERATOR_TIMEOUT: Duration = Duration::from_secs(360);
@@ -169,7 +170,7 @@ use error::SundogError;
 type Result<T> = std::result::Result<T, SundogError>;
 
 /// Request the setting generators from the API.
-async fn get_setting_generators<S>(socket_path: S) -> Result<HashMap<String, String>>
+async fn get_setting_generators<S>(socket_path: S) -> Result<HashMap<String, SettingsGenerator>>
 where
     S: AsRef<str>,
 {
@@ -189,11 +190,10 @@ where
         }
     );
 
-    let generators: HashMap<String, String> = serde_json::from_str(&response_body)
+    let response: HashMap<String, SettingsGenerator> = serde_json::from_str(&response_body)
         .context(error::ResponseJsonSnafu { method: "GET", uri })?;
-    trace!("Generators: {:?}", &generators);
 
-    Ok(generators)
+    Ok(response)
 }
 
 /// Given a list of settings, query the API for any that are currently set.
@@ -301,14 +301,16 @@ where
 }
 
 /// Run the setting generators and collect the output
+/// separately for weak and strong settings
 async fn get_dynamic_settings<P>(
     socket_path: P,
-    generators: HashMap<String, String>,
-) -> Result<model::Settings>
+    generators: HashMap<String, SettingsGenerator>,
+) -> Result<(Option<model::Settings>, Option<model::Settings>)>
 where
     P: AsRef<Path>,
 {
-    let mut settings = HashMap::new();
+    let mut strong_settings = HashMap::new();
+    let mut weak_settings = HashMap::new();
 
     // Build the list of settings to query from the datastore to see if they
     // are currently populated.
@@ -321,7 +323,9 @@ where
     let proxy_envs = build_proxy_env(socket_path).await?;
 
     // For each generator, run it and capture the output
-    for (setting_str, generator) in generators {
+    for (setting_str, generator_object) in generators {
+        let generator = generator_object.command;
+
         let setting = Key::new(KeyType::Data, &setting_str).context(error::InvalidKeySnafu {
             key_type: KeyType::Data,
             key: &setting_str,
@@ -334,9 +338,29 @@ where
         // TODO: We can optimize by using a prefix trie here. But there are no satisfactory trie
         //  implementations I can find on crates.io. We can roll our own at some point if this
         //  becomes a bottleneck
-        if populated_settings
+
+        let is_setting_populated = populated_settings
             .iter()
-            .any(|k| k.starts_with_segments(setting.segments()))
+            .any(|k| k.starts_with_segments(setting.segments()));
+
+        match (generator_object.skip_if_populated, is_setting_populated) {
+            (true, true) => {
+                debug!("Setting '{}' is already populated, skipping", setting);
+                continue;
+            }
+            (false, true) => {
+                debug!(
+                    "Setting '{}' is already populated, but configured to be overwritten",
+                    setting
+                );
+            }
+            _ => (),
+        }
+
+        if generator_object.skip_if_populated
+            && populated_settings
+                .iter()
+                .any(|k| k.starts_with_segments(setting.segments()))
         {
             debug!("Setting '{}' is already populated, skipping", setting);
             continue;
@@ -445,19 +469,38 @@ where
             })?;
         trace!("Serialized output: {}", &serialized_output);
 
-        settings.insert(setting, serialized_output);
+        // Add the setting to the appropriate map
+        if generator_object.strength == Strength::Strong {
+            strong_settings.insert(setting, serialized_output);
+        } else {
+            weak_settings.insert(setting, serialized_output);
+        }
     }
 
     // The API takes a properly nested Settings struct, so deserialize our map to a Settings
     // and ensure it is correct
-    let settings_struct: model::Settings =
-        deserialization::from_map(&settings).context(error::DeserializeSnafu)?;
 
-    Ok(settings_struct)
+    let weak_settings_struct: Option<model::Settings> = if weak_settings.is_empty() {
+        None
+    } else {
+        Some(deserialization::from_map(&weak_settings).context(error::DeserializeSnafu)?)
+    };
+
+    let strong_settings_struct: Option<model::Settings> = if strong_settings.is_empty() {
+        None
+    } else {
+        Some(deserialization::from_map(&strong_settings).context(error::DeserializeSnafu)?)
+    };
+
+    Ok((weak_settings_struct, strong_settings_struct))
 }
 
 /// Send the settings to the datastore through the API
-async fn set_settings<S>(socket_path: S, settings: model::Settings) -> Result<()>
+async fn set_settings<S>(
+    socket_path: S,
+    settings: model::Settings,
+    strength: Strength,
+) -> Result<()>
 where
     S: AsRef<str>,
 {
@@ -465,9 +508,10 @@ where
     let request_body = serde_json::to_string(&settings).context(error::SerializeRequestSnafu)?;
 
     let uri = &format!(
-        "{}?tx={}",
+        "{}?tx={}&strength={}",
         constants::API_SETTINGS_URI,
-        constants::LAUNCH_TRANSACTION
+        constants::LAUNCH_TRANSACTION,
+        strength
     );
     let method = "PATCH";
     trace!("Settings to {} to {}: {}", method, uri, &request_body);
@@ -566,10 +610,28 @@ async fn run() -> Result<()> {
     }
 
     info!("Retrieving settings values");
-    let settings = get_dynamic_settings(&args.socket_path, generators).await?;
+
+    let (weak_settings, strong_settings) =
+        get_dynamic_settings(&args.socket_path, generators).await?;
+
+    trace!(
+        "Weak settings from dynamic settings function: {:#?}",
+        weak_settings
+    );
+    trace!(
+        "Strong settings from dynamic settings function: {:#?}",
+        strong_settings
+    );
 
     info!("Sending settings values to the API");
-    set_settings(&args.socket_path, settings).await?;
+
+    if let Some(weak_set) = weak_settings {
+        set_settings(&args.socket_path, weak_set, Strength::Weak).await?;
+    };
+
+    if let Some(strong_set) = strong_settings {
+        set_settings(&args.socket_path, strong_set, Strength::Strong).await?;
+    }
 
     Ok(())
 }

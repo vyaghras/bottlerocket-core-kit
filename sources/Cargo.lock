@@ -4955,6 +4955,7 @@ dependencies = [
  "http 0.2.12",
  "log",
  "models",
+ "serde",
  "serde_json",
  "shlex",
  "simplelog",
