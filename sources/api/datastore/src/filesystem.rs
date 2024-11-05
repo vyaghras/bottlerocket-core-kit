@@ -13,6 +13,8 @@ use std::io;
 use std::path::{self, Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
+use crate::constraints_check::{ApprovedWrite, ConstraintCheckResult};
+
 use super::key::{Key, KeyType};
 use super::{error, Committed, DataStore, Result};
 
@@ -413,6 +415,7 @@ impl DataStore for FilesystemDataStore {
     fn list_populated_metadata<S1, S2>(
         &self,
         prefix: S1,
+        committed: &Committed,
         metadata_key_name: &Option<S2>,
     ) -> Result<HashMap<Key, HashSet<Key>>>
     where
@@ -420,7 +423,7 @@ impl DataStore for FilesystemDataStore {
         S2: AsRef<str>,
     {
         // Find metadata key paths on disk
-        let key_paths = find_populated_key_paths(self, KeyType::Meta, prefix, &Committed::Live)?;
+        let key_paths = find_populated_key_paths(self, KeyType::Meta, prefix, committed)?;
 
         // For each file on disk, check the user's conditions, and add it to our output
         let mut result = HashMap::new();
@@ -460,8 +463,13 @@ impl DataStore for FilesystemDataStore {
         self.delete_key_path(path, committed)
     }
 
-    fn get_metadata_raw(&self, metadata_key: &Key, data_key: &Key) -> Result<Option<String>> {
-        let path = self.metadata_path(metadata_key, data_key, &Committed::Live)?;
+    fn get_metadata_raw(
+        &self,
+        metadata_key: &Key,
+        data_key: &Key,
+        committed: &Committed,
+    ) -> Result<Option<String>> {
+        let path = self.metadata_path(metadata_key, data_key, committed)?;
         read_file_for_key(metadata_key, &path)
     }
 
@@ -470,8 +478,9 @@ impl DataStore for FilesystemDataStore {
         metadata_key: &Key,
         data_key: &Key,
         value: S,
+        committed: &Committed,
     ) -> Result<()> {
-        let path = self.metadata_path(metadata_key, data_key, &Committed::Live)?;
+        let path = self.metadata_path(metadata_key, data_key, committed)?;
         write_file_mkdir(path, value)
     }
 
@@ -482,27 +491,57 @@ impl DataStore for FilesystemDataStore {
 
     /// We commit by copying pending keys to live, then removing pending.  Something smarter (lock,
     /// atomic flip, etc.) will be required to make the server concurrent.
-    fn commit_transaction<S>(&mut self, transaction: S) -> Result<HashSet<Key>>
+    fn commit_transaction<S, C>(
+        &mut self,
+        transaction: S,
+        constraint_check: &C,
+    ) -> Result<HashSet<Key>>
     where
         S: Into<String> + AsRef<str>,
+        C: Fn(
+            &mut Self,
+            &Committed,
+        ) -> std::result::Result<
+            ConstraintCheckResult,
+            Box<dyn std::error::Error + Send + Sync + 'static>,
+        >,
     {
+        let mut pending_keys: HashSet<Key> = Default::default();
+
+        let transactions = self.list_transactions()?;
+        if !transactions.contains(transaction.as_ref()) {
+            return Ok(pending_keys);
+        }
+
         let pending = Committed::Pending {
             tx: transaction.into(),
         };
-        // Get data for changed keys
-        let pending_data = self.get_prefix("settings.", &pending)?;
 
-        // Nothing to do if no keys are present in pending
-        if pending_data.is_empty() {
-            return Ok(Default::default());
+        let constraints_check_result =
+            constraint_check(self, &pending).context(error::CheckConstraintExecutionSnafu)?;
+
+        let approved_write = ApprovedWrite::try_from(constraints_check_result)?;
+
+        trace!(
+            "commit_transaction: transaction_metadata: {:?}",
+            approved_write.metadata
+        );
+
+        // write the metadata.
+        for (metadata_key, data_key, value) in approved_write.metadata {
+            self.set_metadata(&metadata_key, &data_key, value, &Committed::Live)?;
         }
 
-        // Save Keys for return value
-        let pending_keys: HashSet<Key> = pending_data.keys().cloned().collect();
+        let pending_data = approved_write.settings;
 
-        // Apply changes to live
-        debug!("Writing pending keys to live");
-        self.set_keys(&pending_data, &Committed::Live)?;
+        if !pending_data.is_empty() {
+            // Save Keys for return value
+            pending_keys = pending_data.keys().cloned().collect();
+
+            // Apply changes to live
+            debug!("Writing pending keys to live");
+            self.set_keys(&pending_data, &Committed::Live)?;
+        }
 
         // Remove pending
         debug!("Removing old pending keys");

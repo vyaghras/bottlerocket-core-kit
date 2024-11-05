@@ -59,6 +59,20 @@ pub enum Error {
 
     #[snafu(display("Key name beyond maximum length {}: {}", name, max))]
     KeyTooLong { name: String, max: usize },
+
+    #[snafu(display("Unable to serialize data: {}", source))]
+    Serialize { source: serde_json::Error },
+
+    #[snafu(display("Unable to run the check constraint function: {}", source))]
+    CheckConstraintExecution {
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+
+    #[snafu(display(
+        "Check constraint function rejected the transaction. Aborting commit : {}",
+        err
+    ))]
+    ConstraintCheckReject { err: String },
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
