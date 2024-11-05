@@ -1,0 +1,19 @@
+[advisory]
+id = "BRSA-khvn4nh2ukbb"
+title = "kernel CVE-2024-38632"
+cve = "CVE-2024-38632"
+severity = "moderate"
+description = "In the Linux kernel, the following vulnerability has been resolved: vfio/pci: fix potential memory leak in vfio_intx_enable()"
+
+[[advisory.products]]
+package-name = "kernel-5.15"
+patched-version = "5.15.168"
+patched-release = "0"
+patched-epoch = "0"
+
+[updateinfo]
+author = "kssessio"
+issue-date = 2024-11-01T22:39:19Z
+arches = ["aarch64", "x86_64"]
+version = "3.1.4"
+
