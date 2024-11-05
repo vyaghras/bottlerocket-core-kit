@@ -24,6 +24,9 @@ pub mod exec;
 // Types used to communicate between client and server for 'apiclient ephemeral-storage'.
 pub mod ephemeral_storage;
 
+// Types used to handle the settings generator metadata among various systems
+pub mod generator;
+
 use bottlerocket_release::BottlerocketRelease;
 use bottlerocket_settings_models::model_derive::model;
 use bottlerocket_settings_plugin::BottlerocketSettings;

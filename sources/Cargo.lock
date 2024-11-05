@@ -3425,6 +3425,7 @@ dependencies = [
  "libc",
  "serde",
  "serde_json",
+ "serde_plain",
  "toml",
 ]
 
