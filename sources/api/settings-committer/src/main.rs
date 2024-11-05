@@ -16,7 +16,7 @@ use snafu::ResultExt;
 use std::str::FromStr;
 use std::{collections::HashMap, env, process};
 
-const API_PENDING_URI_BASE: &str = "/tx";
+const API_PENDING_URI_BASE: &str = "/v2/tx";
 const API_COMMIT_URI_BASE: &str = "/tx/commit";
 
 type Result<T> = std::result::Result<T, error::SettingsCommitterError>;
