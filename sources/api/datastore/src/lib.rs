@@ -27,6 +27,7 @@ The `deserialization` module provides code to deserialize datastore-acceptable k
 * The `serialization` module can't handle complex types under lists; it assumes lists can be serialized as scalars.
 */
 
+pub mod constraints_check;
 pub mod deserialization;
 pub mod error;
 pub mod filesystem;
@@ -34,6 +35,7 @@ pub mod key;
 pub mod memory;
 pub mod serialization;
 
+use constraints_check::ConstraintCheckResult;
 pub use error::{Error, Result};
 pub use filesystem::FilesystemDataStore;
 pub use key::{Key, KeyType, KEY_SEPARATOR, KEY_SEPARATOR_STR};
@@ -72,6 +74,7 @@ pub trait DataStore {
     fn list_populated_metadata<S1, S2>(
         &self,
         prefix: S1,
+        committed: &Committed,
         metadata_key_name: &Option<S2>,
     ) -> Result<HashMap<Key, HashSet<Key>>>
     where
@@ -89,7 +92,12 @@ pub trait DataStore {
 
     /// Retrieve the value for a single metadata key from the datastore.  Values will inherit from
     /// earlier in the tree, if more specific values are not found later.
-    fn get_metadata(&self, metadata_key: &Key, data_key: &Key) -> Result<Option<String>> {
+    fn get_metadata(
+        &self,
+        metadata_key: &Key,
+        data_key: &Key,
+        committed: &Committed,
+    ) -> Result<Option<String>> {
         let mut result = Ok(None);
         let mut current_path = Vec::new();
 
@@ -101,7 +109,7 @@ pub trait DataStore {
                 unreachable!("Prefix of Key failed to make Key: {:?}", current_path)
             });
 
-            if let Some(md) = self.get_metadata_raw(metadata_key, &data_key)? {
+            if let Some(md) = self.get_metadata_raw(metadata_key, &data_key, committed)? {
                 result = Ok(Some(md));
             }
         }
@@ -110,13 +118,19 @@ pub trait DataStore {
 
     /// Retrieve the value for a single metadata key from the datastore, without taking into
     /// account inheritance of metadata from earlier in the tree.
-    fn get_metadata_raw(&self, metadata_key: &Key, data_key: &Key) -> Result<Option<String>>;
+    fn get_metadata_raw(
+        &self,
+        metadata_key: &Key,
+        data_key: &Key,
+        committed: &Committed,
+    ) -> Result<Option<String>>;
     /// Set the value of a single metadata key in the datastore.
     fn set_metadata<S: AsRef<str>>(
         &mut self,
         metadata_key: &Key,
         data_key: &Key,
         value: S,
+        committed: &Committed,
     ) -> Result<()>;
     /// Removes the given metadata key from the given data key in the datastore.  If we
     /// succeeded, we return Ok(()); if the data or metadata key didn't exist, we also return
@@ -125,9 +139,14 @@ pub trait DataStore {
 
     /// Applies pending changes from the given transaction to the live datastore.  Returns the
     /// list of changed keys.
-    fn commit_transaction<S>(&mut self, transaction: S) -> Result<HashSet<Key>>
+    fn commit_transaction<S, C>(
+        &mut self,
+        transaction: S,
+        constraint_check: &C,
+    ) -> Result<HashSet<Key>>
     where
-        S: Into<String> + AsRef<str>;
+        S: Into<String> + AsRef<str>,
+        C: Fn(&mut Self, &Committed) -> Result<ConstraintCheckResult>;
 
     /// Remove the given pending transaction from the datastore.  Returns the list of removed
     /// keys.  If the transaction doesn't exist, will return Ok with an empty list.
@@ -205,18 +224,20 @@ pub trait DataStore {
     fn get_metadata_prefix<S1, S2>(
         &self,
         find_prefix: S1,
+        committed: &Committed,
         metadata_key_name: &Option<S2>,
     ) -> Result<HashMap<Key, HashMap<Key, String>>>
     where
         S1: AsRef<str>,
         S2: AsRef<str>,
     {
-        let meta_map = self.list_populated_metadata(&find_prefix, metadata_key_name)?;
+        let meta_map = self.list_populated_metadata(&find_prefix, committed, metadata_key_name)?;
         trace!("Found populated metadata: {:?}", meta_map);
         if meta_map.is_empty() {
             return Ok(HashMap::new());
         }
 
+        print!("metadata in get metadata prefix {:?}", meta_map);
         let mut result = HashMap::new();
         for (data_key, meta_keys) in meta_map {
             for meta_key in meta_keys {
@@ -234,12 +255,12 @@ pub trait DataStore {
                     meta_key,
                     &data_key
                 );
-                let value = self.get_metadata(&meta_key, &data_key)?.context(
-                    error::ListedMetaNotPresentSnafu {
+                let value = self
+                    .get_metadata(&meta_key, &data_key, committed)?
+                    .context(error::ListedMetaNotPresentSnafu {
                         meta_key: meta_key.name(),
                         data_key: data_key.name(),
-                    },
-                )?;
+                    })?;
 
                 // Insert a top-level map entry for the data key if we've found metadata.
                 let data_entry = result.entry(data_key.clone()).or_insert_with(HashMap::new);
@@ -336,14 +357,20 @@ mod test {
         let grandchild = Key::new(KeyType::Data, "a.b.c").unwrap();
 
         // Set metadata on parent
-        m.set_metadata(&meta, &parent, "value").unwrap();
+        m.set_metadata(&meta, &parent, "value", &Committed::Live)
+            .unwrap();
         // Metadata shows up on grandchild...
         assert_eq!(
-            m.get_metadata(&meta, &grandchild).unwrap(),
+            m.get_metadata(&meta, &grandchild, &Committed::Live)
+                .unwrap(),
             Some("value".to_string())
         );
         // ...but only through inheritance, not directly.
-        assert_eq!(m.get_metadata_raw(&meta, &grandchild).unwrap(), None);
+        assert_eq!(
+            m.get_metadata_raw(&meta, &grandchild, &Committed::Live)
+                .unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -379,20 +406,92 @@ mod test {
         let mk1 = Key::new(KeyType::Meta, "metatest1").unwrap();
         let mk2 = Key::new(KeyType::Meta, "metatest2").unwrap();
         let mk3 = Key::new(KeyType::Meta, "metatest3").unwrap();
-        m.set_metadata(&mk1, &k1, "41").unwrap();
-        m.set_metadata(&mk2, &k2, "42").unwrap();
-        m.set_metadata(&mk3, &k3, "43").unwrap();
+        m.set_metadata(&mk1, &k1, "41", &Committed::Live).unwrap();
+        m.set_metadata(&mk2, &k2, "42", &Committed::Live).unwrap();
+        m.set_metadata(&mk3, &k3, "43", &Committed::Live).unwrap();
 
         // Check all metadata
         assert_eq!(
-            m.get_metadata_prefix("x.", &None as &Option<&str>).unwrap(),
+            m.get_metadata_prefix("x.", &Committed::Live, &None as &Option<&str>)
+                .unwrap(),
             hashmap!(k1 => hashmap!(mk1 => "41".to_string()),
                      k2.clone() => hashmap!(mk2.clone() => "42".to_string()))
         );
 
         // Check metadata matching a given name
         assert_eq!(
-            m.get_metadata_prefix("x.", &Some("metatest2")).unwrap(),
+            m.get_metadata_prefix("x.", &Committed::Live, &Some("metatest2"))
+                .unwrap(),
+            hashmap!(k2 => hashmap!(mk2 => "42".to_string()))
+        );
+    }
+
+    #[test]
+    fn get_metadata_prefix_from_pending() {
+        let mut m = MemoryDataStore::new();
+
+        // Build some data keys to which we can attach metadata; they don't actually have to be
+        // set in the data store.
+        let k1 = Key::new(KeyType::Data, "x.1").unwrap();
+        let k2 = Key::new(KeyType::Data, "x.2").unwrap();
+        let k3 = Key::new(KeyType::Data, "y.3").unwrap();
+
+        // Set some metadata to check
+        let mk1 = Key::new(KeyType::Meta, "metatest1").unwrap();
+        let mk2 = Key::new(KeyType::Meta, "metatest2").unwrap();
+        let mk3 = Key::new(KeyType::Meta, "metatest3").unwrap();
+        m.set_metadata(
+            &mk1,
+            &k1,
+            "41",
+            &Committed::Pending {
+                tx: "test".to_owned(),
+            },
+        )
+        .unwrap();
+        m.set_metadata(
+            &mk2,
+            &k2,
+            "42",
+            &Committed::Pending {
+                tx: "test".to_owned(),
+            },
+        )
+        .unwrap();
+        m.set_metadata(
+            &mk3,
+            &k3,
+            "43",
+            &Committed::Pending {
+                tx: "test".to_owned(),
+            },
+        )
+        .unwrap();
+
+        // Check all metadata
+        assert_eq!(
+            m.get_metadata_prefix(
+                "x.",
+                &Committed::Pending {
+                    tx: "test".to_owned()
+                },
+                &None as &Option<&str>
+            )
+            .unwrap(),
+            hashmap!(k1 => hashmap!(mk1 => "41".to_string()),
+                     k2.clone() => hashmap!(mk2.clone() => "42".to_string()))
+        );
+
+        // Check metadata matching a given name
+        assert_eq!(
+            m.get_metadata_prefix(
+                "x.",
+                &Committed::Pending {
+                    tx: "test".to_owned()
+                },
+                &Some("metatest2")
+            )
+            .unwrap(),
             hashmap!(k2 => hashmap!(mk2 => "42".to_string()))
         );
     }
