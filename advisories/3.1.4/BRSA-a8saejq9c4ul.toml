@@ -1,0 +1,25 @@
+[advisory]
+id = "BRSA-a8saejq9c4ul"
+title = "kernel CVE-2024-46695"
+cve = "CVE-2024-46695"
+severity = "moderate"
+description = "In the Linux kernel, the following vulnerability has been resolved: selinux,smack: don't bypass permissions check in inode_setsecctx hook"
+
+[[advisory.products]]
+package-name = "kernel-5.10"
+patched-version = "5.10.227"
+patched-release = "0"
+patched-epoch = "0"
+
+[[advisory.products]]
+package-name = "kernel-5.15"
+patched-version = "5.15.168"
+patched-release = "0"
+patched-epoch = "0"
+
+[updateinfo]
+author = "kssessio"
+issue-date = 2024-11-01T22:39:19Z
+arches = ["x86_64", "aarch64"]
+version = "3.1.4"
+
