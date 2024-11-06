@@ -87,6 +87,7 @@ Source1100: systemd-tmpfiles-setup-service-debug.conf
 Source1101: systemd-resolved-service-env.conf
 Source1102: systemd-networkd-service-env.conf
 Source1103: systemd-logind-inhibit-maxdelay.conf
+Source1104: aws-config.conf
 
 # network link rules
 Source1200: 80-release.link
@@ -168,6 +169,9 @@ install -p -m 0644 %{S:96} %{buildroot}%{_cross_libdir}/repart.d/80-local.conf
 
 install -d %{buildroot}%{_cross_sysctldir}
 install -p -m 0644 %{S:97} %{buildroot}%{_cross_sysctldir}/80-release.conf
+
+install -d %{buildroot}%{_cross_unitdir}/service.d
+install -p -m 0644 %{S:1104} %{buildroot}%{_cross_unitdir}/service.d/00-aws-config.conf
 
 install -d %{buildroot}%{_cross_libdir}/systemd/system.conf.d
 install -p -m 0644 %{S:98} %{buildroot}%{_cross_libdir}/systemd/system.conf.d/80-release.conf
@@ -312,6 +316,7 @@ ln -s preconfigured.target %{buildroot}%{_cross_unitdir}/default.target
 %{_cross_unitdir}/prepare-local-fs.service
 %{_cross_unitdir}/deprecation-warning@.service
 %{_cross_unitdir}/deprecation-warning@.timer
+%{_cross_unitdir}/service.d/00-aws-config.conf
 %dir %{_cross_unitdir}/systemd-resolved.service.d
 %{_cross_unitdir}/systemd-resolved.service.d/00-env.conf
 %dir %{_cross_unitdir}/systemd-networkd.service.d
