@@ -599,7 +599,9 @@ func cleanUp(containerdSocket string, namespace string, containerID string) erro
 // Referenced source: https://github.com/awslabs/amazon-ecr-containerd-resolver/blob/a5058cf091f4fc573813a032db37a9820952f1f9/ecr/ref.go#L70-L71
 func parseImageURISpecialRegions(input string) (ecr.ECRSpec, error) {
 	ecrRefPrefixMapping := map[string]string{
+		"ap-southeast-7": "ecr.aws/arn:aws:ecr:ap-southeast-7:",
 		"eu-isoe-west-1": "ecr.aws/arn:aws-iso-e:ecr:eu-isoe-west-1:",
+		"mx-central-1":   "ecr.aws/arn:aws:ecr:mx-central-1:",
 	}
 	// A set of the currently supported FIPS regions for ECR: https://docs.aws.amazon.com/general/latest/gr/ecr.html
 	fipsSupportedEcrRegionSet := map[string]bool{
