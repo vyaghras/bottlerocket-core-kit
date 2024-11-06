@@ -1,3 +1,53 @@
+# v3.2.0 (2024-11-06)
+
+## Orchestrator Changes
+### Kubernetes
+* Match the EKS Optimized AMIs secure TLS ciphers ([#230], [#245])
+
+## OS Changes
+* Provide FIPS binaries for first-party rust programs ([#173])
+* Support ECR FIPS endpoints for host containers ([#204])
+* Adjust SELinux Policy to allow execute programs in NFS filesystems ([#205])
+* Mount `binfmt_mics` filesystem at boot ([#206])
+* Add proxy support for pluto FIPS binary ([#213])
+* Generate default AWS config file ([#218])
+* Adjust SELinux Policy for first-party FIPS rust programs ([#222])
+* Update third-party packages ([#210], [#212], [#214], [#219], [#220], [#246])
+* Add `rdma-core` to packages ([#223])
+* Use Amazon Linux 2023 as upstream for `libkcapi` ([#224])
+* Set AWS_SDK_LOAD_CONFIG for system services ([#243])
+* Add proxy support for `cfsignal` ([#234])
+
+## Build Changes
+* Build Neuron kernel module in kernel packages ([#207])
+* Update Bottlerocket SDK to v0.47.0 ([#241])
+
+## Tools
+* Add `insertFinalNewline` for VSCode Workspaces ([#242])
+
+[#173]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/173
+[#204]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/204
+[#205]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/205
+[#206]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/206
+[#207]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/207
+[#210]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/210
+[#212]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/212
+[#213]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/213
+[#214]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/214
+[#218]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/218
+[#219]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/219
+[#220]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/220
+[#222]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/222
+[#223]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/223
+[#224]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/224
+[#230]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/230
+[#234]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/234
+[#241]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/241
+[#242]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/242
+[#243]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/243
+[#245]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/245
+[#246]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/246
+
 # v3.1.5 (2024-11-04)
 
 ## OS Changes
