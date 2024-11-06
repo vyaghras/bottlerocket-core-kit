@@ -179,6 +179,7 @@ dependencies = [
  "pigz",
  "policycoreutils",
  "procps",
+ "rdma-core",
  "readline",
  "release",
  "runc",
@@ -963,6 +964,14 @@ version = "0.1.0"
 dependencies = [
  "glibc",
  "libselinux",
+]
+
+[[package]]
+name = "rdma-core"
+version = "0.1.0"
+dependencies = [
+ "glibc",
+ "libnl",
 ]
 
 [[package]]

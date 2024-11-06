@@ -1,0 +1,20 @@
+[package]
+name = "rdma-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+build = "../build.rs"
+
+[lib]
+path = "../packages.rs"
+
+[package.metadata.build-package]
+releases-url = "https://github.com/linux-rdma/rdma-core/releases"
+
+[[package.metadata.build-package.external-files]]
+url = "https://github.com/linux-rdma/rdma-core/releases/download/v54.0/rdma-core-54.0.tar.gz"
+sha512 = "efb98dec017e1eb71ed6f2b652d557d0444c672ff388927bdd724c81bb4baeb5617c81fff609f794c1ff128ab93ae26ed4502bd0ebf14e157737b1b08d0fb4b9"
+
+[build-dependencies]
+glibc = { path = "../glibc" }
+libnl = { path = "../libnl" }

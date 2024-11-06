@@ -119,6 +119,7 @@ pciutils = { path = "../../packages/pciutils" }
 pigz = { path = "../../packages/pigz" }
 policycoreutils = { path = "../../packages/policycoreutils" }
 procps = { path = "../../packages/procps" }
+rdma-core = { path = "../../packages/rdma-core" }
 readline = { path = "../../packages/readline" }
 release = { path = "../../packages/release" }
 runc = { path = "../../packages/runc" }
