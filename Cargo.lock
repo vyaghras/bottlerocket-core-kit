@@ -914,6 +914,7 @@ name = "nvme-cli"
 version = "0.1.0"
 dependencies = [
  "glibc",
+ "libjson-c",
  "libnvme",
 ]
 
