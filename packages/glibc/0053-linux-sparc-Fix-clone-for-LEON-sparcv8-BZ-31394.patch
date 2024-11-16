@@ -1,0 +1,38 @@
+From efb710034e4c5e734d100cc4ef1b1e27d4315825 Mon Sep 17 00:00:00 2001
+From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
+Date: Mon, 2 Sep 2024 16:58:51 -0300
+Subject: [PATCH] linux: sparc: Fix clone for LEON/sparcv8 (BZ 31394)
+
+The sparc clone mitigation (faeaa3bc9f76030) added the use of
+flushw, which is not support by LEON/sparcv8.  As discussed on
+the libc-alpha, 'ta 3' is a working alternative [1].
+
+[1] https://sourceware.org/pipermail/libc-alpha/2024-August/158905.html
+
+Checked with a build for sparcv8-linux-gnu targetting leon.
+
+Acked-by: John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>
+(cherry picked from commit 5e8cfc5d625e6dd000a0371d21d792836ea7951a)
+---
+ sysdeps/unix/sysv/linux/sparc/sparc32/clone.S | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S b/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S
+index c9cf9bb055..c84244f56b 100644
+--- a/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S
++++ b/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S
+@@ -29,7 +29,11 @@
+ ENTRY (__clone)
+ 	save	%sp,-96,%sp
+ 	save	%sp,-96,%sp
++#ifdef __sparcv9
+ 	flushw
++#else
++	ta 3
++#endif
+ 	restore
+ 	cfi_def_cfa_register(%fp)
+ 	cfi_window_save
+-- 
+2.47.0
+

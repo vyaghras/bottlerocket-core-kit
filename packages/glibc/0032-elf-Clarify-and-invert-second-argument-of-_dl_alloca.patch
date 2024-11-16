@@ -1,0 +1,102 @@
+From b7edcfa0f41ccfaeb665a661d3a6a594c8d95848 Mon Sep 17 00:00:00 2001
+From: Florian Weimer <fweimer@redhat.com>
+Date: Thu, 1 Aug 2024 23:31:23 +0200
+Subject: [PATCH] elf: Clarify and invert second argument of
+ _dl_allocate_tls_init
+
+Also remove an outdated comment: _dl_allocate_tls_init is
+called as part of pthread_create.
+
+Reviewed-by: Carlos O'Donell <carlos@redhat.com>
+(cherry picked from commit fe06fb313bddf7e4530056897d4a706606e49377)
+---
+ elf/dl-tls.c               | 13 +++++++++----
+ elf/rtld.c                 |  2 +-
+ nptl/allocatestack.c       |  2 +-
+ sysdeps/generic/ldsodefs.h |  4 +---
+ 4 files changed, 12 insertions(+), 9 deletions(-)
+
+diff --git a/elf/dl-tls.c b/elf/dl-tls.c
+index 3d221273f1..ecb966d282 100644
+--- a/elf/dl-tls.c
++++ b/elf/dl-tls.c
+@@ -552,9 +552,14 @@ _dl_resize_dtv (dtv_t *dtv, size_t max_modid)
+ /* Allocate initial TLS.  RESULT should be a non-NULL pointer to storage
+    for the TLS space.  The DTV may be resized, and so this function may
+    call malloc to allocate that space.  The loader's GL(dl_load_tls_lock)
+-   is taken when manipulating global TLS-related data in the loader.  */
++   is taken when manipulating global TLS-related data in the loader.
++
++   If MAIN_THREAD, this is the first call during process
++   initialization.  In this case, TLS initialization for secondary
++   (audit) namespaces is skipped because that has already been handled
++   by dlopen.  */
+ void *
+-_dl_allocate_tls_init (void *result, bool init_tls)
++_dl_allocate_tls_init (void *result, bool main_thread)
+ {
+   if (result == NULL)
+     /* The memory allocation failed.  */
+@@ -633,7 +638,7 @@ _dl_allocate_tls_init (void *result, bool init_tls)
+ 	     because it would already be set by the audit setup.  However,
+ 	     subsequent thread creation would need to follow the default
+ 	     behaviour.   */
+-	  if (map->l_ns != LM_ID_BASE && !init_tls)
++	  if (map->l_ns != LM_ID_BASE && main_thread)
+ 	    continue;
+ 	  memset (__mempcpy (dest, map->l_tls_initimage,
+ 			     map->l_tls_initimage_size), '\0',
+@@ -661,7 +666,7 @@ _dl_allocate_tls (void *mem)
+ {
+   return _dl_allocate_tls_init (mem == NULL
+ 				? _dl_allocate_tls_storage ()
+-				: allocate_dtv (mem), true);
++				: allocate_dtv (mem), false);
+ }
+ rtld_hidden_def (_dl_allocate_tls)
+ 
+diff --git a/elf/rtld.c b/elf/rtld.c
+index bfdf632e77..09b9c9993b 100644
+--- a/elf/rtld.c
++++ b/elf/rtld.c
+@@ -2338,7 +2338,7 @@ dl_main (const ElfW(Phdr) *phdr,
+      into the main thread's TLS area, which we allocated above.
+      Note: thread-local variables must only be accessed after completing
+      the next step.  */
+-  _dl_allocate_tls_init (tcbp, false);
++  _dl_allocate_tls_init (tcbp, true);
+ 
+   /* And finally install it for the main thread.  */
+   if (! __rtld_tls_init_tp_called)
+diff --git a/nptl/allocatestack.c b/nptl/allocatestack.c
+index f35a8369bd..2cb562f8ea 100644
+--- a/nptl/allocatestack.c
++++ b/nptl/allocatestack.c
+@@ -139,7 +139,7 @@ get_cached_stack (size_t *sizep, void **memp)
+   memset (dtv, '\0', (dtv[-1].counter + 1) * sizeof (dtv_t));
+ 
+   /* Re-initialize the TLS.  */
+-  _dl_allocate_tls_init (TLS_TPADJ (result), true);
++  _dl_allocate_tls_init (TLS_TPADJ (result), false);
+ 
+   return result;
+ }
+diff --git a/sysdeps/generic/ldsodefs.h b/sysdeps/generic/ldsodefs.h
+index 656e8a3fa0..154efb0e19 100644
+--- a/sysdeps/generic/ldsodefs.h
++++ b/sysdeps/generic/ldsodefs.h
+@@ -1200,10 +1200,8 @@ extern void _dl_get_tls_static_info (size_t *sizep, size_t *alignp);
+ 
+ extern void _dl_allocate_static_tls (struct link_map *map) attribute_hidden;
+ 
+-/* These are internal entry points to the two halves of _dl_allocate_tls,
+-   only used within rtld.c itself at startup time.  */
+ extern void *_dl_allocate_tls_storage (void) attribute_hidden;
+-extern void *_dl_allocate_tls_init (void *, bool);
++extern void *_dl_allocate_tls_init (void *result, bool main_thread);
+ rtld_hidden_proto (_dl_allocate_tls_init)
+ 
+ /* True if the TCB has been set up.  */
+-- 
+2.47.0
+

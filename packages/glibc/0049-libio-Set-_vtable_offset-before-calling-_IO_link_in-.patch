@@ -1,0 +1,156 @@
+From 5c06c6e0b5078ffb0aa0c09bac79f086145e0897 Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Sat, 7 Sep 2024 08:32:32 -0700
+Subject: [PATCH] libio: Set _vtable_offset before calling _IO_link_in [BZ
+ #32148]
+
+Since _IO_vtable_offset is used to detect the old binaries, set it
+in _IO_old_file_init_internal before calling _IO_link_in which checks
+_IO_vtable_offset.  Add a glibc 2.0 test with copy relocation on
+_IO_stderr_@GLIBC_2.0 to verify that fopen won't cause memory corruption.
+This fixes BZ #32148.
+
+Signed-off-by: H.J. Lu <hjl.tools@gmail.com>
+Reviewed-by: Noah Goldstein <goldstein.w.n@gmail.com>
+(cherry picked from commit 9dfea3de7f690bff70e3c6eb346b9ad082bb2e35)
+---
+ libio/Makefile           |  7 ++++
+ libio/oldfileops.c       |  4 +-
+ libio/tst-fopen-compat.c | 85 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 95 insertions(+), 1 deletion(-)
+ create mode 100644 libio/tst-fopen-compat.c
+
+diff --git a/libio/Makefile b/libio/Makefile
+index 6a507b67ea..5292baa4e0 100644
+--- a/libio/Makefile
++++ b/libio/Makefile
+@@ -286,11 +286,18 @@ endif
+ ifeq ($(build-shared),yes)
+ aux	+= oldfileops oldstdfiles
+ tests += \
++  tst-fopen-compat \
+   tst-stderr-compat \
+ # tests
+ tests-2.0 += \
++  tst-fopen-compat \
+   tst-stderr-compat \
+ # tests-2.0
++
++tst-fopen-compat-ARGS = tst-fopen-compat.c
++# Disable PIE to trigger copy relocation.
++CFLAGS-tst-fopen-compat.c += -fno-pie
++tst-fopen-compat-no-pie = yes
+ endif
+ 
+ shared-only-routines = oldiofopen oldiofdopen oldiofclose oldfileops	\
+diff --git a/libio/oldfileops.c b/libio/oldfileops.c
+index 97148dba9b..8f775c9094 100644
+--- a/libio/oldfileops.c
++++ b/libio/oldfileops.c
+@@ -103,9 +103,11 @@ _IO_old_file_init_internal (struct _IO_FILE_plus *fp)
+   fp->file._old_offset = _IO_pos_BAD;
+   fp->file._flags |= CLOSED_FILEBUF_FLAGS;
+ 
+-  _IO_link_in (fp);
++  /* NB: _vtable_offset must be set before calling _IO_link_in since
++     _IO_vtable_offset is used to detect the old binaries.  */
+   fp->file._vtable_offset = ((int) sizeof (struct _IO_FILE)
+ 			     - (int) sizeof (struct _IO_FILE_complete));
++  _IO_link_in (fp);
+   fp->file._fileno = -1;
+ 
+   if (&_IO_stdin_used != NULL || !_IO_legacy_file ((FILE *) fp))
+diff --git a/libio/tst-fopen-compat.c b/libio/tst-fopen-compat.c
+new file mode 100644
+index 0000000000..f241b61043
+--- /dev/null
++++ b/libio/tst-fopen-compat.c
+@@ -0,0 +1,85 @@
++/* Verify that fopen works with copy relocation on _IO_stderr_ in binaries
++   linked with glibc 2.0.
++   Copyright (C) 2024 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <https://www.gnu.org/licenses/>.  */
++
++#include <shlib-compat.h>
++
++#if TEST_COMPAT (libc, GLIBC_2_0, GLIBC_2_1)
++# define _LIBC
++# define _IO_USE_OLD_IO_FILE
++# include <stdio.h>
++# include <string.h>
++# include <unistd.h>
++# include <limits.h>
++# include <sys/stat.h>
++# include <support/check.h>
++
++struct _IO_jump_t;
++
++struct _IO_FILE_plus
++{
++  FILE file;
++  const struct _IO_jump_t *vtable;
++};
++
++extern struct _IO_FILE_plus _IO_stderr_;
++compat_symbol_reference (libc, _IO_stderr_, _IO_stderr_, GLIBC_2_0);
++compat_symbol_reference (libc, fopen, fopen, GLIBC_2_0);
++compat_symbol_reference (libc, fclose, fclose, GLIBC_2_0);
++
++static int
++do_test (int argc, char *argv[])
++{
++  static char filename[PATH_MAX + 1];
++  struct stat st;
++  char *name = NULL;
++  int i;
++
++  /* Try to trigger copy relocation.  */
++  TEST_VERIFY_EXIT (_IO_stderr_.file._fileno == STDERR_FILENO);
++
++  for (i = 1; i < argc; i++)
++    {
++      name = argv[i];
++      if (stat (name, &st) == 0)
++	{
++	  TEST_VERIFY_EXIT (strlen (name) <= PATH_MAX);
++	  break;
++	}
++    }
++  TEST_VERIFY_EXIT (name != NULL);
++
++  strcpy (filename, name);
++  FILE *fp = fopen (filename, "r");
++  TEST_VERIFY_EXIT (strcmp (filename, name) == 0);
++  TEST_VERIFY_EXIT (fp != NULL);
++  TEST_VERIFY_EXIT (fclose (fp) == 0);
++  return 0;
++}
++#else
++# include <support/test-driver.h>
++
++static int
++do_test (int argc, char *argv[])
++{
++  return EXIT_UNSUPPORTED;
++}
++#endif
++
++#define TEST_FUNCTION_ARGV do_test
++#include <support/test-driver.c>
+-- 
+2.47.0
+

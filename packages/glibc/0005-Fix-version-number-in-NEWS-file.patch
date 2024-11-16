@@ -1,0 +1,25 @@
+From 145b5886379c8de4f0a1bca3556a4c3d7b6c24b2 Mon Sep 17 00:00:00 2001
+From: Florian Weimer <fweimer@redhat.com>
+Date: Wed, 24 Jul 2024 13:42:16 +0200
+Subject: [PATCH] Fix version number in NEWS file
+
+---
+ NEWS | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/NEWS b/NEWS
+index 4d7100b21c..6b62f55658 100644
+--- a/NEWS
++++ b/NEWS
+@@ -5,7 +5,7 @@ See the end for copying conditions.
+ Please send GNU C library bug reports via <https://sourceware.org/bugzilla/>
+ using `glibc' in the "product" field.
+ 
+-Version 2.41
++Version 2.40.1
+ 
+ The following bugs are resolved with this release:
+ 
+-- 
+2.47.0
+

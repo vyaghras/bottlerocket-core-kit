@@ -1,0 +1,79 @@
+From 898f25e0b1026be5701d05715600be646e9d0714 Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Mon, 22 Jul 2024 17:47:22 -0700
+Subject: [PATCH] x32/cet: Support shadow stack during startup for Linux 6.10
+
+Use RXX_LP in RTLD_START_ENABLE_X86_FEATURES.  Support shadow stack during
+startup for Linux 6.10:
+
+commit 2883f01ec37dd8668e7222dfdb5980c86fdfe277
+Author: H.J. Lu <hjl.tools@gmail.com>
+Date:   Fri Mar 15 07:04:33 2024 -0700
+
+    x86/shstk: Enable shadow stacks for x32
+
+    1. Add shadow stack support to x32 signal.
+    2. Use the 64-bit map_shadow_stack syscall for x32.
+    3. Set up shadow stack for x32.
+
+Add the map_shadow_stack system call to <fixup-asm-unistd.h> and regenerate
+arch-syscall.h.  Tested on Intel Tiger Lake with CET enabled x32.  There
+are no regressions with CET enabled x86-64.  There are no changes in CET
+enabled x86-64 _dl_start_user.
+
+Signed-off-by: H.J. Lu <hjl.tools@gmail.com>
+Reviewed-by: Noah Goldstein <goldstein.w.n@gmail.com>
+(cherry picked from commit 8344c1f5514b1b5b1c8c6e48f4b802653bd23b71)
+---
+ sysdeps/unix/sysv/linux/x86_64/dl-cet.h               | 6 +++---
+ sysdeps/unix/sysv/linux/x86_64/x32/arch-syscall.h     | 1 +
+ sysdeps/unix/sysv/linux/x86_64/x32/fixup-asm-unistd.h | 4 ++++
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/sysdeps/unix/sysv/linux/x86_64/dl-cet.h b/sysdeps/unix/sysv/linux/x86_64/dl-cet.h
+index 1fe3133406..b4f7e6c9cd 100644
+--- a/sysdeps/unix/sysv/linux/x86_64/dl-cet.h
++++ b/sysdeps/unix/sysv/linux/x86_64/dl-cet.h
+@@ -92,9 +92,9 @@ dl_cet_ibt_enabled (void)
+ 	# Pass GL(dl_x86_feature_1) to _dl_cet_setup_features.\n\
+ 	movl %edx, %edi\n\
+ 	# Align stack for the _dl_cet_setup_features call.\n\
+-	andq $-16, %rsp\n\
++	and $-16, %" RSP_LP "\n\
+ 	call _dl_cet_setup_features\n\
+ 	# Restore %rax and %rsp from %r12 and %r13.\n\
+-	movq %r12, %rax\n\
+-	movq %r13, %rsp\n\
++	mov %" R12_LP ", %" RAX_LP "\n\
++	mov %" R13_LP ", %" RSP_LP "\n\
+ "
+diff --git a/sysdeps/unix/sysv/linux/x86_64/x32/arch-syscall.h b/sysdeps/unix/sysv/linux/x86_64/x32/arch-syscall.h
+index 3040a47d72..df3e22236d 100644
+--- a/sysdeps/unix/sysv/linux/x86_64/x32/arch-syscall.h
++++ b/sysdeps/unix/sysv/linux/x86_64/x32/arch-syscall.h
+@@ -155,6 +155,7 @@
+ #define __NR_lsm_set_self_attr 1073742284
+ #define __NR_lstat 1073741830
+ #define __NR_madvise 1073741852
++#define __NR_map_shadow_stack 1073742277
+ #define __NR_mbind 1073742061
+ #define __NR_membarrier 1073742148
+ #define __NR_memfd_create 1073742143
+diff --git a/sysdeps/unix/sysv/linux/x86_64/x32/fixup-asm-unistd.h b/sysdeps/unix/sysv/linux/x86_64/x32/fixup-asm-unistd.h
+index 98124169e6..47fa8af4ce 100644
+--- a/sysdeps/unix/sysv/linux/x86_64/x32/fixup-asm-unistd.h
++++ b/sysdeps/unix/sysv/linux/x86_64/x32/fixup-asm-unistd.h
+@@ -15,6 +15,10 @@
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
+ 
++#ifndef __NR_map_shadow_stack
++# define __NR_map_shadow_stack 1073742277
++#endif
++
+ /* X32 uses the same 64-bit syscall interface for set_thread_area.   */
+ #ifndef __NR_set_thread_area
+ # define __NR_set_thread_area 1073742029
+-- 
+2.47.0
+
