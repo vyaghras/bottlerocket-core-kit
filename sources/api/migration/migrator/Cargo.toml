@@ -20,10 +20,12 @@ futures = { workspace = true, features = ["default"] }
 futures-core.workspace = true
 log.workspace = true
 lz4.workspace = true
+models.workspace = true
 nix.workspace = true
 pentacle.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 semver.workspace = true
+serde_json.workspace = true
 simplelog.workspace = true
 snafu.workspace = true
 tokio = { workspace = true, features = ["fs", "macros", "rt-multi-thread"] }
@@ -31,6 +33,9 @@ tokio-util = { workspace = true, features = ["compat", "io-util"] }
 tough = { workspace = true }
 update_metadata.workspace = true
 url.workspace = true
+walkdir.workspace = true
+datastore.workspace = true
+percent-encoding.workspace = true
 
 [build-dependencies]
 generate-readme.workspace = true
