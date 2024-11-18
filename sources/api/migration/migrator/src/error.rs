@@ -106,6 +106,48 @@ pub(crate) enum Error {
         #[snafu(source(from(tough::error::Error, Box::new)))]
         source: Box<tough::error::Error>,
     },
+
+    #[snafu(display("Unable to get {:?} data from datastore: {}", committed, source))]
+    GetData {
+        committed: datastore::Committed,
+        #[snafu(source(from(datastore::Error, Box::new)))]
+        source: Box<datastore::Error>,
+    },
+
+    #[snafu(display("Unable to deserialize to Value from '{}': {}", input, source))]
+    Deserialize {
+        input: String,
+        source: datastore::ScalarError,
+    },
+
+    #[snafu(display("Unable to get metadata from datastore: {}", source))]
+    GetMetadata {
+        #[snafu(source(from(datastore::Error, Box::new)))]
+        source: Box<datastore::Error>,
+    },
+
+    #[snafu(display("Update used invalid {:?} key '{}': {}", key_type, key, source))]
+    InvalidKey {
+        key_type: datastore::KeyType,
+        key: String,
+        #[snafu(source(from(datastore::Error, Box::new)))]
+        source: Box<datastore::Error>,
+    },
+
+    #[snafu(display("Unable to write to data store: {}", source))]
+    DataStoreWrite {
+        #[snafu(source(from(datastore::Error, Box::new)))]
+        source: Box<datastore::Error>,
+    },
+
+    #[snafu(display("Unable to serialize Value: {}", source))]
+    Serialize { source: datastore::ScalarError },
+
+    #[snafu(display("Unable to list transactions in data store: {}", source))]
+    ListTransactions {
+        #[snafu(source(from(datastore::Error, Box::new)))]
+        source: Box<datastore::Error>,
+    },
 }
 
 /// Result alias containing our Error type.

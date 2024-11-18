@@ -3208,15 +3208,19 @@ dependencies = [
  "bottlerocket-release",
  "bytes",
  "chrono",
+ "datastore",
  "futures",
  "futures-core",
  "generate-readme",
  "log",
  "lz4",
+ "models",
  "nix",
  "pentacle",
+ "percent-encoding",
  "rand",
  "semver",
+ "serde_json",
  "simplelog",
  "snafu",
  "storewolf",
@@ -3226,6 +3230,7 @@ dependencies = [
  "tough",
  "update_metadata",
  "url",
+ "walkdir",
 ]
 
 [[package]]

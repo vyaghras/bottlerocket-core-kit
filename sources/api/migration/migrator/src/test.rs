@@ -1,8 +1,10 @@
 //! Provides an end-to-end test of `migrator` via the `run` function. This module is conditionally
 //! compiled for cfg(test) only.
 use crate::args::Args;
-use crate::run;
+use crate::{copy_without_weak_settings, perform_migrations};
 use chrono::{DateTime, Utc};
+use datastore::memory::MemoryDataStore;
+use datastore::{serialize_scalar, Committed, DataStore, Key};
 use semver::Version;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -349,7 +351,9 @@ async fn migrate_forward() {
         root_path: root(),
         metadata_directory: test_repo.metadata_path.clone(),
     };
-    run(&args).await.unwrap();
+    perform_migrations(test_datastore.datastore.clone(), &args)
+        .await
+        .unwrap();
     // the migrations should write to a file named result.txt.
     let output_file = test_datastore.tmp.path().join("result.txt");
     let contents = std::fs::read_to_string(&output_file).unwrap();
@@ -397,7 +401,9 @@ async fn migrate_backward() {
         root_path: root(),
         metadata_directory: test_repo.metadata_path.clone(),
     };
-    run(&args).await.unwrap();
+    perform_migrations(test_datastore.datastore.clone(), &args)
+        .await
+        .unwrap();
     let output_file = test_datastore.tmp.path().join("result.txt");
     let contents = std::fs::read_to_string(&output_file).unwrap();
     let lines: Vec<&str> = contents.split('\n').collect();
@@ -442,7 +448,7 @@ async fn migrate_forward_with_failed_migration() {
         root_path: root(),
         metadata_directory: test_repo.metadata_path.clone(),
     };
-    let result = run(&args).await;
+    let result = perform_migrations(test_datastore.datastore.clone(), &args).await;
     assert!(result.is_err());
 
     // the migrations should write to a file named result.txt.
@@ -495,7 +501,7 @@ async fn migrate_backward_with_failed_migration() {
         root_path: root(),
         metadata_directory: test_repo.metadata_path.clone(),
     };
-    let result = run(&args).await;
+    let result = perform_migrations(test_datastore.datastore.clone(), &args).await;
     assert!(result.is_err());
 
     let output_file = test_datastore.tmp.path().join("result.txt");
@@ -531,4 +537,101 @@ async fn migrate_backward_with_failed_migration() {
         .to_str()
         .unwrap()
         .starts_with("v0.99.1"));
+}
+
+#[tokio::test]
+async fn test_remove_all_metadata() {
+    let mut source = MemoryDataStore::new();
+    let data_key = Key::new(datastore::KeyType::Data, "a.b.c").unwrap();
+    let metadata_key = Key::new(datastore::KeyType::Meta, "c").unwrap();
+    let value = serialize_scalar::<std::string::String, serde_json::Error>(
+        &"Test metadata value".to_string(),
+    )
+    .unwrap();
+
+    source
+        .set_metadata(&metadata_key, &data_key, value, &Committed::Live)
+        .unwrap();
+
+    // Ensure that metadata exists in the source datastore
+    let metadata = source
+        .get_metadata(&metadata_key, &data_key, &Committed::Live)
+        .unwrap();
+    assert!(metadata.is_some());
+    assert_eq!(metadata.unwrap(), "\"Test metadata value\"");
+
+    let mut target = MemoryDataStore::new();
+
+    let result = copy_without_weak_settings(source, &mut target);
+    assert!(result.is_ok());
+
+    // Ensure that metadata does not exists in the target datastore
+    let metadata = target
+        .get_metadata(&metadata_key, &data_key, &Committed::Live)
+        .unwrap();
+    assert!(metadata.is_none());
+}
+
+#[tokio::test]
+async fn test_only_weak_settings_are_removed() {
+    let mut source = MemoryDataStore::new();
+    let weak_data_key = Key::new(datastore::KeyType::Data, "a.b.c").unwrap();
+    let weak_metadata_key = Key::new(datastore::KeyType::Meta, "strength").unwrap();
+    let weak_metadata_value =
+        serialize_scalar::<std::string::String, serde_json::Error>(&"weak".to_string()).unwrap();
+    let weak_data_value = serialize_scalar::<std::string::String, serde_json::Error>(
+        &"strong data value".to_string(),
+    )
+    .unwrap();
+
+    source
+        .set_key(&weak_data_key, weak_data_value, &Committed::Live)
+        .unwrap();
+    source
+        .set_metadata(
+            &weak_metadata_key,
+            &weak_data_key,
+            weak_metadata_value,
+            &Committed::Live,
+        )
+        .unwrap();
+
+    let strong_data_key = Key::new(datastore::KeyType::Data, "e.f").unwrap();
+    let strong_metadata_key = Key::new(datastore::KeyType::Meta, "strength").unwrap();
+    let strong_metadata_value =
+        serialize_scalar::<std::string::String, serde_json::Error>(&"strong".to_string()).unwrap();
+    let strong_data_value = serialize_scalar::<std::string::String, serde_json::Error>(
+        &"strong data value".to_string(),
+    )
+    .unwrap();
+
+    source
+        .set_key(
+            &strong_data_key,
+            strong_data_value.clone(),
+            &Committed::Live,
+        )
+        .unwrap();
+    source
+        .set_metadata(
+            &strong_metadata_key,
+            &strong_data_key,
+            strong_metadata_value,
+            &Committed::Live,
+        )
+        .unwrap();
+
+    let mut target = MemoryDataStore::new();
+
+    let result = copy_without_weak_settings(source, &mut target);
+    assert!(result.is_ok());
+
+    // Ensure that metadata does not exists in the target datastore
+    let weak_data = target.get_key(&weak_data_key, &Committed::Live).unwrap();
+    assert!(weak_data.is_none());
+
+    // Ensure that metadata does not exists in the target datastore
+    let strong_data = target.get_key(&strong_data_key, &Committed::Live).unwrap();
+    assert!(strong_data.is_some());
+    assert_eq!(strong_data.unwrap(), strong_data_value);
 }

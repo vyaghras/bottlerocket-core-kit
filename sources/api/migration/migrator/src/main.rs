@@ -22,6 +22,8 @@
 extern crate log;
 
 use args::Args;
+use datastore::{Committed, DataStore, FilesystemDataStore, Value};
+use datastore_helper::{get_input_data, set_output_data, DataStoreData};
 use direction::Direction;
 use error::Result;
 use futures::{StreamExt, TryStreamExt};
@@ -30,6 +32,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use semver::Version;
 use simplelog::{Config as LogConfig, SimpleLogger};
 use snafu::{ensure, OptionExt, ResultExt};
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::env;
 use std::io::ErrorKind;
@@ -46,10 +49,13 @@ use update_metadata::Manifest;
 use url::Url;
 
 mod args;
+mod datastore_helper;
 mod direction;
 mod error;
 #[cfg(test)]
 mod test;
+
+type DataStoreImplementation = FilesystemDataStore;
 
 // Returning a Result from main makes it print a Debug representation of the error, but with Snafu
 // we have nice Display representations of the error, so we wrap "main" (run) and print any error.
@@ -62,6 +68,7 @@ async fn main() {
         eprintln!("{}", e);
         process::exit(1);
     }
+
     if let Err(e) = run(&args).await {
         eprintln!("{}", e);
         process::exit(1);
@@ -109,9 +116,15 @@ where
 }
 
 pub(crate) async fn run(args: &Args) -> Result<()> {
+    // Remove all the weak setting and all metadata
+    let datastore = remove_weak_settings(&args.datastore_path, &args.migrate_to_version).await?;
+
+    perform_migrations(datastore, args).await
+}
+
+pub(crate) async fn perform_migrations(datastore_path: PathBuf, args: &Args) -> Result<()> {
     // Get the directory we're working in.
-    let datastore_dir = args
-        .datastore_path
+    let datastore_dir = datastore_path
         .parent()
         .context(error::DataStoreLinkToRootSnafu {
             path: &args.datastore_path,
@@ -123,7 +136,7 @@ pub(crate) async fn run(args: &Args) -> Result<()> {
             info!(
                 "Requested version {} matches version of given datastore at '{}'; nothing to do",
                 args.migrate_to_version,
-                args.datastore_path.display()
+                datastore_path.display()
             );
             process::exit(0);
         });
@@ -183,13 +196,13 @@ pub(crate) async fn run(args: &Args) -> Result<()> {
         // change, we can just link to the last version rather than making a copy.
         // (Note: we link to the fully resolved directory, args.datastore_path,  so we don't
         // have a chain of symlinks that could go past the maximum depth.)
-        flip_to_new_version(&args.migrate_to_version, &args.datastore_path).await?;
+        flip_to_new_version(&args.migrate_to_version, &datastore_path).await?;
     } else {
         let copy_path = run_migrations(
             &repo,
             direction,
             &migrations,
-            &args.datastore_path,
+            &datastore_path,
             &args.migrate_to_version,
         )
         .await?;
@@ -232,6 +245,70 @@ where
         to.display()
     );
     Ok(to)
+}
+
+async fn remove_weak_settings<P>(datastore_path: P, new_version: &Version) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+{
+    // We start with the given source_datastore, updating this to delete weak settings and setting-generators
+    let source_datastore = datastore_path.as_ref();
+    // We create a new data store (below) to serve as the target for update.  (Start at
+    // source just to have the right type)
+    let target_datastore = new_datastore_location(source_datastore, new_version)?;
+
+    let source = DataStoreImplementation::new(source_datastore);
+    let mut target = DataStoreImplementation::new(&target_datastore);
+
+    copy_without_weak_settings(source, &mut target)?;
+    Ok(target_datastore)
+}
+
+fn copy_without_weak_settings(source: impl DataStore, target: &mut impl DataStore) -> Result<()> {
+    // Run for both live data and pending transactions
+    let mut committeds = vec![Committed::Live];
+    let transactions = source
+        .list_transactions()
+        .context(error::ListTransactionsSnafu)?;
+    committeds.extend(transactions.into_iter().map(|tx| Committed::Pending { tx }));
+
+    for committed in committeds {
+        let input = get_input_data(&source, &committed)?;
+
+        let mut migrated = input.clone();
+        let input_after_removing_weak_settings = remove_weak_setting_from_datastore(&mut migrated)?;
+
+        set_output_data(target, &input_after_removing_weak_settings, &committed)?;
+    }
+
+    Ok(())
+}
+
+fn remove_weak_setting_from_datastore(datastore: &mut DataStoreData) -> Result<DataStoreData> {
+    let mut keys_to_remove = HashSet::new();
+
+    // Collect the metadata keys whose strength is weak
+    for (key, inner_map) in &datastore.metadata {
+        if let Some(strength) = inner_map.get("strength") {
+            if strength == &Value::String("weak".to_string()) {
+                keys_to_remove.insert(key.clone());
+            }
+        }
+    }
+    // Remove strength metadata for weak settings and weak settings
+    for key in keys_to_remove {
+        let metadata = datastore.metadata.get(&key);
+        if let Some(metadata) = metadata {
+            let mut inner_map = metadata.clone();
+            inner_map.remove("strength");
+            datastore.metadata.insert(key.clone(), inner_map);
+        }
+        datastore.data.remove(&key);
+    }
+
+    datastore.metadata = HashMap::new();
+
+    Ok(datastore.clone())
 }
 
 /// Runs the given migrations in their given order.  The given direction is passed to each
