@@ -1,5 +1,5 @@
 Name: %{_cross_os}binutils
-Version: 2.38
+Version: 2.41
 Release: 1%{?dist}
 Epoch: 1
 Summary: Tools for working with binaries
@@ -32,7 +32,8 @@ Requires: %{name}
   --disable-gdb \
   --with-system-zlib \
   --without-gnu-as \
-  --disable-static
+  --disable-static \
+  --disable-gprofng
 %make_build MAKEINFO=true tooldir=%{_cross_prefix}
 
 %install
