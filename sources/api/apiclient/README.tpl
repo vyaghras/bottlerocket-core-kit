@@ -174,6 +174,10 @@ You can see all your pending settings like this:
 ```shell
 apiclient raw -u /tx
 ```
+You can also see pending metadata along with pending setting using version 2 of `/tx` like this:
+```shell
+apiclient raw -u /v2/tx
+```
 
 To *commit* the settings, and let the system apply them to any relevant configuration files or services, do this:
 ```shell
