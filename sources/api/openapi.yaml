@@ -129,6 +129,13 @@ components:
               type: array
               items:
                 type: string
+        SettingsResponseWithMetadata:
+          type: object
+          properties:
+            settings:
+              $ref: '#/components/schemas/Settings'
+            metadata:
+              $ref: '#/components/schemas/HashMap'
         network:
           type: object
           properties:
@@ -210,6 +217,23 @@ components:
       properties:
         targets:
           type: array
+    SettingGenerators:
+      type: object
+      additionalProperties:
+        oneOf:
+        - type: string
+        - type: object
+          additionalProperties: false
+          properties:
+            command:
+              type: string
+            strength:
+              enum:
+              - weak
+              - strong
+              type: string
+          required:
+          - command
 paths:
   /:
     get:
@@ -343,6 +367,27 @@ paths:
       responses:
         200:
           description: "Successful deleted pending settings - deleted keys are returned"
+        500:
+          description: "Server error"
+  
+  /v2/tx:
+    get:
+      summary: "Get pending settings and metadata in a transaction"
+      operationId: "get_tx_v2"
+      parameters:
+        - in: query
+          name: tx
+          description: "Transaction to retrieve pending settings and metadata; defaults to user 'default' transaction"
+          schema:
+            type: string
+          required: false
+      responses:
+        200:
+          description: "Successful request"
+          content:
+            application/json:
+              schema:
+                $ref: #/components/schemas/SettingsResponseWithMetadata"
         500:
           description: "Server error"
 
@@ -492,6 +537,26 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
+        500:
+          description: "Server error"
+  /v2/metadata/setting-generators:
+    get:
+      summary: "Get programs to generate settings, and the strength of the generated settings"
+      operationId: "get_setting_generators_v2"
+      responses:
+        200:
+          description: "Successful request"
+          content:
+            application/json:
+              # The response is a hashmap of string to Object. Example:
+              # { "settings.foobar": "/usr/bin/foobar" } or 
+              # { "settings.foobar": {
+              #     "command": "/usr/bin/foobar",
+              #     "strength": "weak"
+              #    } 
+              # }
+              schema:
+                $ref: "#/components/schemas/SettingGenerators"
         500:
           description: "Server error"
 
