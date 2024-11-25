@@ -132,6 +132,7 @@ dependencies = [
  "libglib",
  "libinih",
  "libiw",
+ "libjson-c",
  "libkcapi",
  "libmnl",
  "libncurses",
@@ -635,6 +636,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "libjson-c"
+version = "0.1.0"
+dependencies = [
+ "glibc",
+]
+
+[[package]]
 name = "libkcapi"
 version = "0.1.0"
 dependencies = [
@@ -867,6 +875,7 @@ name = "nvme-cli"
 version = "0.1.0"
 dependencies = [
  "glibc",
+ "libjson-c",
  "libnvme",
 ]
 

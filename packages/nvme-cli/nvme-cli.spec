@@ -1,15 +1,18 @@
 Name: %{_cross_os}nvme-cli
-Version: 2.10.2
+Version: 2.11
 Release: 1%{?dist}
 Epoch: 1
 Summary: CLI to interact with NVMe devices
 License: LGPL-2.1-only AND GPL-2.0-only AND CC0-1.0 AND MIT
 URL: https://github.com/linux-nvme/nvme-cli
 Source0: https://github.com/linux-nvme/nvme-cli/archive/v%{version}/nvme-cli-%{version}.tar.gz
+Patch1: 0001-plugins-amzn-add-stats-support.patch
 
 BuildRequires: meson
 BuildRequires: %{_cross_os}glibc-devel
+BuildRequires: %{_cross_os}libjson-c-devel
 BuildRequires: %{_cross_os}libnvme-devel
+Requires: %{_cross_os}libjson-c
 Requires: %{_cross_os}libnvme
 
 %description
@@ -22,7 +25,7 @@ Requires: %{_cross_os}libnvme
 CONFIGURE_OPTS=(
  -Ddocs=false
  -Ddocs-build=false
- -Djson-c=disabled
+ -Djson-c=enabled
 )
 
 %cross_meson "${CONFIGURE_OPTS[@]}"
