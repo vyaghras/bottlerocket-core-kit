@@ -12,8 +12,8 @@ path = "../packages.rs"
 releases-url = "https://github.com/linux-audit/audit-userspace/releases"
 
 [[package.metadata.build-package.external-files]]
-url = "https://github.com/linux-audit/audit-userspace/archive/v3.1.5/audit-userspace-3.1.5.tar.gz"
-sha512 = "9274a6addf20f306292e0a79f3432b7f4934b8134ed9cafdd2088ec676c03303e56f1c618b45fc922d4484306801dcbec420ea6533f68a1464960b979d40313a"
+url = "https://github.com/linux-audit/audit-userspace/archive/v4.0.2/audit-userspace-4.0.2.tar.gz"
+sha512 = "558b9211a5dc1062eee98aa7bcd292797f06109a8ee735da1d704bc18d97b0bee93487ef9303404016df2e08cff32d90f1dd056797ac05beaabe3cccb5db5af2"
 
 [build-dependencies]
 glibc = { path = "../glibc" }
