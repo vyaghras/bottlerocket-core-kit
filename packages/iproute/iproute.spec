@@ -1,5 +1,5 @@
 Name: %{_cross_os}iproute
-Version: 6.4.0
+Version: 6.9.0
 Release: 1%{?dist}
 Summary: Tools for advanced IP routing and network device configuration
 License: GPL-2.0-or-later AND GPL-2.0-only
@@ -28,7 +28,7 @@ export DESTDIR='%{buildroot}' \\\
 export SBINDIR='%{_cross_sbindir}' \\\
 export MANDIR='%{_cross_mandir}' \\\
 export LIBDIR='%{_cross_libdir}' \\\
-export CONFDIR='%{_cross_sysconfdir}/iproute2' \\\
+export CONF_USR_DIR='%{_cross_datadir}/iproute2' \\\
 export DOCDIR='%{_cross_docdir}' \\\
 export HDRDIR='%{_cross_includedir}' \\\
 export BASH_COMPDIR='%{_cross_bashdir}' \\\
@@ -44,14 +44,6 @@ export PKG_CONFIG_PATH='%{_cross_pkgconfigdir}' \\\
 %install
 %set_env
 %make_install
-
-install -d %{buildroot}%{_cross_factorydir}%{_cross_sysconfdir}
-mv %{buildroot}%{_cross_sysconfdir}/iproute2 %{buildroot}%{_cross_factorydir}%{_cross_sysconfdir}
-
-install -d %{buildroot}%{_cross_tmpfilesdir}
-for f in %{buildroot}%{_cross_factorydir}%{_cross_sysconfdir}/iproute2/* ; do
-  echo "C %{_cross_sysconfdir}/iproute2/${f##*/} - - - -" >> %{buildroot}%{_cross_tmpfilesdir}/iproute2.conf
-done
 
 %files
 %license COPYING
@@ -76,9 +68,8 @@ done
 %{_cross_sbindir}/vdpa
 %dir %{_cross_libdir}/tc
 %{_cross_libdir}/tc/*
-%dir %{_cross_factorydir}%{_cross_sysconfdir}/iproute2
-%{_cross_factorydir}%{_cross_sysconfdir}/iproute2/*
-%{_cross_tmpfilesdir}/iproute2.conf
+%dir %{_cross_datadir}/iproute2
+%{_cross_datadir}/iproute2/*
 %exclude %{_cross_bashdir}/*
 %exclude %{_cross_docdir}/*
 %exclude %{_cross_mandir}/*
