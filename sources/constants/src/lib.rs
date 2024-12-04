@@ -5,7 +5,7 @@
 // Shared API settings
 pub const API_SOCKET: &str = "/run/api.sock";
 pub const API_SETTINGS_URI: &str = "/settings";
-pub const API_SETTINGS_GENERATORS_URI: &str = "/metadata/setting-generators";
+pub const API_SETTINGS_GENERATORS_URI: &str = "/v2/metadata/setting-generators";
 
 // Shared transaction used by boot time services
 pub const LAUNCH_TRANSACTION: &str = "bottlerocket-launch";
