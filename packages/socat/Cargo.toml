@@ -9,8 +9,8 @@ build = "../build.rs"
 path = "../packages.rs"
 
 [[package.metadata.build-package.external-files]]
-url = "http://www.dest-unreach.org/socat/download/socat-1.8.0.0.tar.gz"
-sha512 = "edf459a9f1907a14025e13b3101ad29787f9a72795cffcd00017ce98847562884db29a95b9ae478a6a50868137548b142947c43fb18e975eb5853a763c42902c"
+url = "http://www.dest-unreach.org/socat/download/socat-1.8.0.1.tar.gz"
+sha512 = "2a327b4c2e00fc6afda503548d5bc285d4f120892c75ec6633201825e39e3003a8b8d827053364dc444b72ff728a82381769941c023d8b0a66d955417162b735"
 
 [build-dependencies]
 glibc = { path = "../glibc" }
