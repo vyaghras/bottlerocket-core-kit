@@ -1,5 +1,5 @@
 Name: %{_cross_os}policycoreutils
-Version: 3.6
+Version: 3.7
 Release: 1%{?dist}
 Epoch: 1
 Summary: A set of SELinux policy tools
