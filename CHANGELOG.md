@@ -1,3 +1,18 @@
+# v4.0.1 (2024-12-05)
+
+## OS Changes
+* Normalize `amazon-ecs-cni-plugins` version ([#277])
+* Add host certs to host containers using a volume mount ([#278])
+* Fix `host-ctr` to correctly extract regions from ECR URIs ([#287])
+* Run udev after the SELinux Policy files are available ([#290])
+* Update `nvidia-container-toolkit` and `libnvidia-container` ([#296])
+
+[#277]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/277
+[#278]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/278
+[#287]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/287
+[#290]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/290
+[#296]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/296
+
 # v4.0.0 (2024-11-20)
 
 ## OS Changes
