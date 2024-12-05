@@ -12,8 +12,8 @@ path = "../packages.rs"
 releases-url = "https://github.com/NVIDIA/libnvidia-container/releases"
 
 [[package.metadata.build-package.external-files]]
-url = "https://github.com/NVIDIA/libnvidia-container/archive/v1.17.1/libnvidia-container-1.17.1.tar.gz"
-sha512 = "7c643c3b119767e188752dd32314bd214ada1510f56617f9a20bc0483604d77215bcf6ce93c3b5a5111b30cf228df6d76625d1c1f2f2ce95d77e229d6c6120c4"
+url = "https://github.com/NVIDIA/libnvidia-container/archive/v1.17.3/libnvidia-container-1.17.3.tar.gz"
+sha512 = "24293e369fea42ebe64163464f600808c0d18e8b4efeea12095de22e16d43837cb6441f46baf52e8c966810c76b0f5045737a96d173e2ecf8cd15fff37cd4c4f"
 
 [[package.metadata.build-package.external-files]]
 url = "https://github.com/NVIDIA/nvidia-modprobe/archive/550.54.14/nvidia-modprobe-550.54.14.tar.gz"
