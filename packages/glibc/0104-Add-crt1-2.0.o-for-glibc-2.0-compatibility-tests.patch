@@ -1,0 +1,231 @@
+From 4dd8641461463b667b5503ab0ea4abcf261378a9 Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Tue, 30 Apr 2024 09:57:12 -0700
+Subject: [PATCH] Add crt1-2.0.o for glibc 2.0 compatibility tests
+
+Starting from glibc 2.1, crt1.o contains _IO_stdin_used which is checked
+by _IO_check_libio to provide binary compatibility for glibc 2.0.  Add
+crt1-2.0.o for tests against glibc 2.0.  Define tests-2.0 for glibc 2.0
+compatibility tests.  Add and update glibc 2.0 compatibility tests for
+stderr, matherr and pthread_kill.
+Reviewed-by: Carlos O'Donell <carlos@redhat.com>
+
+(cherry picked from commit 5f245f3bfbe61b2182964dafb94907e38284b806)
+---
+ Makeconfig                | 21 ++++++++++++++++
+ Rules                     | 13 +++++++++-
+ csu/Makefile              |  5 +++-
+ libio/Makefile            |  6 +++++
+ libio/tst-stderr-compat.c | 52 +++++++++++++++++++++++++++++++++++++++
+ math/Makefile             |  3 +++
+ sysdeps/pthread/Makefile  |  4 +++
+ 7 files changed, 102 insertions(+), 2 deletions(-)
+ create mode 100644 libio/tst-stderr-compat.c
+
+diff --git a/Makeconfig b/Makeconfig
+index 3f8acff459..3a2c864b04 100644
+--- a/Makeconfig
++++ b/Makeconfig
+@@ -360,6 +360,8 @@ whole-archive = -Wl,--whole-archive
+ # Installed name of the startup code.
+ # The ELF convention is that the startfile is called crt1.o
+ start-installed-name = crt1.o
++# Similar to crt1.o, but without _IO_stdin_used.
++start-name-2.0 = crt1-2.0.o
+ # On systems that do not need a special startfile for statically linked
+ # binaries, simply set it to the normal name.
+ ifndef static-start-installed-name
+@@ -537,6 +539,25 @@ else  # build-static
+ endif  # build-shared
+ endif  # +link
+ 
++# Command for linking test programs with crt1.o from glibc 2.0.
+++link-2.0-before-inputs = -nostdlib -nostartfiles $(no-pie-ldflag) \
++	      $(sysdep-LDFLAGS) $(LDFLAGS) $(LDFLAGS-$(@F)) \
++	      $(relro-LDFLAGS) $(hashstyle-LDFLAGS) \
++	      $(firstword $(CRT-$(@F)) $(csu-objpfx)$(start-name-2.0)) \
++	      $(+preinit) $(+prector)
+++link-2.0-before-libc = -o $@ $(+link-2.0-before-inputs) \
++	      $(filter-out $(addprefix $(csu-objpfx),start.o \
++						     $(start-name-2.0))\
++			   $(+preinit) $(link-extra-libs) \
++			   $(common-objpfx)libc% $(+postinit),$^) \
++	      $(link-extra-libs)
+++link-after-libc = $(+postctor) $(+postinit)
++define +link-2.0-tests
++$(CC) $(+link-2.0-before-libc) $(rtld-tests-LDFLAGS) $(link-libc-tests) \
++  $(+link-after-libc)
++$(call after-link,$@)
++endef
++
+ # The pretty printer test programs need to be compiled without optimizations
+ # so they won't confuse gdb.  We could use either the 'GCC optimize' pragma
+ # or the 'optimize' function attribute to achieve this; however, at least on
+diff --git a/Rules b/Rules
+index 279ae490ac..e8096cb285 100644
+--- a/Rules
++++ b/Rules
+@@ -188,6 +188,7 @@ binaries-all = $(binaries-all-notests) $(binaries-all-tests)
+ binaries-static-notests = $(others-static)
+ binaries-static-tests = $(tests-static) $(xtests-static)
+ binaries-static = $(binaries-static-notests) $(binaries-static-tests)
++binaries-shared-2.0-tests = $(tests-2.0)
+ ifeq (yesyes,$(have-fpie)$(build-shared))
+ binaries-pie-tests = $(tests-pie) $(xtests-pie)
+ binaries-pie-notests = $(others-pie)
+@@ -215,7 +216,8 @@ binaries-malloc-hugetlb2-tests =
+ endif
+ 
+ binaries-pie = $(binaries-pie-tests) $(binaries-pie-notests)
+-binaries-shared-tests = $(filter-out $(binaries-pie) $(binaries-static), \
++binaries-shared-tests = $(filter-out $(binaries-pie) $(binaries-static) \
++				     $(binaries-shared-2.0-tests), \
+ 				     $(binaries-all-tests))
+ binaries-shared-notests = $(filter-out $(binaries-pie) $(binaries-static), \
+ 				       $(binaries-all-notests))
+@@ -235,6 +237,15 @@ $(addprefix $(objpfx),$(binaries-shared-tests)): %: %.o \
+ 	$(+link-tests)
+ endif
+ 
++# Linking test programs with crt1.o from glibc 2.0.
++ifneq "$(strip $(binaries-shared-2.0-tests))" ""
++$(addprefix $(objpfx),$(binaries-shared-2.0-tests)): %: %.o \
++  $(link-extra-libs-tests) \
++  $(sort $(filter $(common-objpfx)lib%,$(link-libc))) \
++  $(addprefix $(csu-objpfx),start.o) $(+preinit) $(+postinit)
++	$(+link-2.0-tests)
++endif
++
+ ifneq "$(strip $(binaries-mcheck-tests))" ""
+ $(addprefix $(objpfx),$(binaries-mcheck-tests)): %-mcheck: %.o \
+   $(link-extra-libs-tests) \
+diff --git a/csu/Makefile b/csu/Makefile
+index fcd277e6d3..c2b1c4013f 100644
+--- a/csu/Makefile
++++ b/csu/Makefile
+@@ -33,7 +33,7 @@ elide-routines.os = libc-tls
+ csu-dummies = $(filter-out $(start-installed-name),crt1.o Mcrt1.o)
+ extra-objs = start.o \
+ 	     $(start-installed-name) g$(start-installed-name) $(csu-dummies) \
+-	     S$(start-installed-name)
++	     S$(start-installed-name) $(start-name-2.0)
+ omit-deps = $(patsubst %.o,%,$(start-installed-name) g$(start-installed-name) \
+ 			     b$(start-installed-name) $(csu-dummies) \
+ 			     S$(start-installed-name) \
+@@ -138,6 +138,9 @@ ifndef start-installed-name-rule
+ $(objpfx)$(start-installed-name): $(objpfx)start.o $(objpfx)abi-note.o \
+ 				  $(objpfx)init.o $(objpfx)static-reloc.o
+ 	$(link-relocatable)
++$(objpfx)$(start-name-2.0): $(objpfx)start.o $(objpfx)abi-note.o \
++			    $(objpfx)static-reloc.o
++	$(link-relocatable)
+ $(objpfx)r$(start-installed-name): $(objpfx)start.o $(objpfx)abi-note.o \
+ 				  $(objpfx)init.o
+ 	$(link-relocatable)
+diff --git a/libio/Makefile b/libio/Makefile
+index 287ec11338..8f9f302807 100644
+--- a/libio/Makefile
++++ b/libio/Makefile
+@@ -212,6 +212,12 @@ aux	:= fileops genops stdfiles stdio strops
+ ifeq ($(build-shared),yes)
+ generated += tst-bz24228.mtrace tst-bz24228.check
+ aux	+= oldfileops oldstdfiles
++tests += \
++  tst-stderr-compat \
++# tests
++tests-2.0 += \
++  tst-stderr-compat \
++# tests-2.0
+ endif
+ 
+ shared-only-routines = oldiofopen oldiofdopen oldiofclose oldfileops	\
+diff --git a/libio/tst-stderr-compat.c b/libio/tst-stderr-compat.c
+new file mode 100644
+index 0000000000..8221415cd4
+--- /dev/null
++++ b/libio/tst-stderr-compat.c
+@@ -0,0 +1,52 @@
++/* Test that fclose works on stderr from glibc 2.0.
++   Copyright (C) 2024 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <https://www.gnu.org/licenses/>.  */
++
++#include <shlib-compat.h>
++
++#if TEST_COMPAT (libc, GLIBC_2_0, GLIBC_2_1)
++# define _LIBC
++# define _IO_USE_OLD_IO_FILE
++# include <stdio.h>
++# include <support/check.h>
++
++extern FILE _IO_stderr_;
++compat_symbol_reference (libc, _IO_stderr_, _IO_stderr_, GLIBC_2_0);
++compat_symbol_reference (libc, fclose, fclose, GLIBC_2_0);
++
++__attribute__ ((weak, noclone, noinline))
++void
++do_fclose (FILE *fp)
++{
++  TEST_VERIFY_EXIT (fclose (fp) == 0);
++}
++
++static int
++do_test (void)
++{
++  do_fclose (&_IO_stderr_);
++  return 0;
++}
++#else
++static int
++do_test (void)
++{
++  return 0;
++}
++#endif
++
++#include <support/test-driver.c>
+diff --git a/math/Makefile b/math/Makefile
+index a9daae09de..9730093630 100644
+--- a/math/Makefile
++++ b/math/Makefile
+@@ -261,6 +261,9 @@ tests-static = test-fpucw-static test-fpucw-ieee-static \
+ # The tested symbols matherr, _LIB_VERSION have been removed in glibc 2.27.
+ ifeq ($(have-GLIBC_2.26)$(build-shared),yesyes)
+ tests += test-matherr test-matherr-2
++tests-2.0 += \
++  test-matherr-2 \
++  # tests-2.0
+ endif
+ 
+ # These tests use internal (unexported) GMP functions and are linked
+diff --git a/sysdeps/pthread/Makefile b/sysdeps/pthread/Makefile
+index 31028406d5..67706433f0 100644
+--- a/sysdeps/pthread/Makefile
++++ b/sysdeps/pthread/Makefile
+@@ -282,6 +282,10 @@ tests += \
+   tst-vfork2x \
+   # tests
+ 
++tests-2.0 += \
++  tst-pthread_kill-exited
++  # tests-2.0
++
+ tests-time64 += \
+   tst-abstime-time64 \
+   tst-cnd-timedwait-time64 \
+-- 
+2.45.0
+
