@@ -1,4 +1,4 @@
-From cef5037351f2b214b9239d59dec7a83a0db75b0c Mon Sep 17 00:00:00 2001
+From 2beaa13c5c6089ddf69c445cd74f84bd8ed7aeec Mon Sep 17 00:00:00 2001
 From: Arnaldo Garcia Rincon <agarrcia@amazon.com>
 Date: Wed, 3 May 2023 18:23:40 +0000
 Subject: [PATCH] bottlerocket: change execcmd directories for Bottlerocket
@@ -9,6 +9,7 @@ agent runs as a service in Bottlerocket, the paths to the directories
 are different.
 
 Signed-off-by: Arnaldo Garcia Rincon <agarrcia@amazon.com>
+Signed-off-by: Yutong Sun <yutongsu@amazon.com>
 ---
  agent/app/agent_capability_unix.go              | 2 +-
  agent/engine/execcmd/manager_init_task_linux.go | 4 ++--
@@ -16,20 +17,20 @@ Signed-off-by: Arnaldo Garcia Rincon <agarrcia@amazon.com>
  3 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/agent/app/agent_capability_unix.go b/agent/app/agent_capability_unix.go
-index 51b4393..76492c7 100644
+index aceef91c6..9feb8d9da 100644
 --- a/agent/app/agent_capability_unix.go
 +++ b/agent/app/agent_capability_unix.go
-@@ -37,7 +37,7 @@ const (
- 	SSE41                 = "sse4_1"
- 	SSE42                 = "sse4_2"
- 	CpuInfoPath           = "/proc/cpuinfo"
--	capabilityDepsRootDir = "/managed-agents"
-+	capabilityDepsRootDir = "/usr/libexec/amazon-ecs-agent/managed-agents"
- )
- 
- var (
+@@ -41,7 +41,7 @@ const (
+ 	SSE41                       = "sse4_1"
+ 	SSE42                       = "sse4_2"
+ 	CpuInfoPath                 = "/proc/cpuinfo"
+-	capabilityDepsRootDir       = "/managed-agents"
++	capabilityDepsRootDir       = "/usr/libexec/amazon-ecs-agent/managed-agents"
+ 	modInfoCmd                  = "modinfo"
+ 	faultInjectionKernelModules = "sch_netem"
+ 	ctxTimeoutDuration          = 60 * time.Second
 diff --git a/agent/engine/execcmd/manager_init_task_linux.go b/agent/engine/execcmd/manager_init_task_linux.go
-index 05af158..6117e55 100644
+index 05af1582b..6117e55ae 100644
 --- a/agent/engine/execcmd/manager_init_task_linux.go
 +++ b/agent/engine/execcmd/manager_init_task_linux.go
 @@ -24,7 +24,7 @@ import (
@@ -51,7 +52,7 @@ index 05af158..6117e55 100644
  
  	ContainerConfigFileSuffix = "configuration/" + containerConfigFileName
 diff --git a/agent/engine/execcmd/manager_linux.go b/agent/engine/execcmd/manager_linux.go
-index 706d5da..6322816 100644
+index 706d5da35..6322816f6 100644
 --- a/agent/engine/execcmd/manager_linux.go
 +++ b/agent/engine/execcmd/manager_linux.go
 @@ -16,6 +16,6 @@
@@ -63,5 +64,5 @@ index 706d5da..6322816 100644
  	HostBinDir      = hostExecDepsDir + "/bin"
  )
 -- 
-2.40.1
+2.47.0
 
