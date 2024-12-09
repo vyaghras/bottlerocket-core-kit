@@ -1,0 +1,93 @@
+From f4743b860496adee1dc8468c2673b87e9e3107b6 Mon Sep 17 00:00:00 2001
+From: Ben Cressey <bcressey@amazon.com>
+Date: Fri, 13 Dec 2024 21:29:52 +0000
+Subject: [PATCH] require older meson
+
+The Bottlerocket SDK currently has meson 1.3.2. This patch can be
+dropped once it moves to a newer version of Fedora.
+
+This reverts upstream commit 51e3e7d9ae330cd798604d0bd1ac70d0daa93681.
+---
+ gio/tests/meson.build                  | 2 +-
+ girepository/introspection/meson.build | 8 ++++----
+ meson.build                            | 5 +++--
+ 3 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/gio/tests/meson.build b/gio/tests/meson.build
+index 273ff01a9..9fee00a36 100644
+--- a/gio/tests/meson.build
++++ b/gio/tests/meson.build
+@@ -7,7 +7,7 @@ common_gio_tests_deps = [
+ 
+ test_c_args = [
+   '-DG_LOG_DOMAIN="GLib-GIO"',
+-  '-DGLIB_MKENUMS="@0@"'.format(glib_mkenums.full_path()),
++  '-DGLIB_MKENUMS="@0@"'.format(glib_mkenums),
+   '-DGLIB_COMPILE_SCHEMAS="@0@"'.format(glib_compile_schemas.full_path()),
+   '-UG_DISABLE_ASSERT',
+ ]
+diff --git a/girepository/introspection/meson.build b/girepository/introspection/meson.build
+index 97fd73105..8c9e23ec3 100644
+--- a/girepository/introspection/meson.build
++++ b/girepository/introspection/meson.build
+@@ -242,14 +242,14 @@ gio_gir_args = [
+ if host_system == 'windows'
+   gio_gir_sources += [ gio_win32_include_headers, win32_sources ]
+   foreach h: gio_win32_include_headers
+-    gio_gir_args += '--c-include=' + h.full_path()
++    gio_gir_args += '--c-include=@0@'.format(h)
+   endforeach
+   gio_gir_packages += 'gio-windows-2.0'
+   gio_gir_args += '--pkg=gio-windows-2.0'
+ else
+   gio_gir_sources += [ gio_unix_include_headers, unix_sources ]
+   foreach h: gio_unix_include_headers
+-    gio_gir_args += '--c-include=' + h.full_path()
++    gio_gir_args += '--c-include=@0@'.format(h)
+   endforeach
+   gio_gir_packages += 'gio-unix-2.0'
+   gio_gir_args += '--pkg=gio-unix-2.0'
+@@ -278,7 +278,7 @@ gio_gir = gnome.generate_gir(libgio,
+ if host_system == 'windows'
+   gio_win32_gir_c_includes = []
+   foreach h: gio_win32_include_headers
+-    gio_win32_gir_c_includes += '--c-include=' + h.full_path()
++    gio_win32_gir_c_includes += '--c-include=@0@'.format(h)
+   endforeach
+ 
+   gio_win32_gir = gnome.generate_gir(libgio,
+@@ -308,7 +308,7 @@ if host_system == 'windows'
+ else
+   gio_unix_gir_c_includes = []
+   foreach h: gio_unix_include_headers
+-    gio_unix_gir_c_includes += '--c-include=' + h.full_path()
++    gio_unix_gir_c_includes += '--c-include=@0@'.format(h)
+   endforeach
+ 
+   gio_unix_gir = gnome.generate_gir(libgio,
+diff --git a/meson.build b/meson.build
+index 7da293881..d0d5362c8 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1,7 +1,7 @@
+ project('glib', 'c',
+   version : '2.83.0',
+   # NOTE: See the policy in docs/meson-version.md before changing the Meson dependency
+-  meson_version : '>= 1.4.0',
++  meson_version : '>= 1.2.0',
+   default_options : [
+     'buildtype=debugoptimized',
+     'warning_level=3',
+@@ -226,7 +226,8 @@ if valgrind.found()
+       '--num-callers=50',
+       '--show-leak-kinds=definite,possible',
+       '--show-error-list=yes',
+-      '--suppressions=' + valgrind_suppression_file.full_path(),
++      '--suppressions=@0@'.format(meson.project_source_root() /
++        '@0@'.format(valgrind_suppression_file)),
+     ],
+     env: common_test_env,
+     timeout_multiplier: 20,
+-- 
+2.47.0
+
