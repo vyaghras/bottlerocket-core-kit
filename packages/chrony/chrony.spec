@@ -1,14 +1,17 @@
 Name: %{_cross_os}chrony
-Version: 4.5
+Version: 4.6.1
 Release: 1%{?dist}
 Summary: A versatile implementation of the Network Time Protocol
 License: GPL-2.0-only
 URL: https://chrony.tuxfamily.org
 Source0: https://download.tuxfamily.org/chrony/chrony-%{version}.tar.gz
-Source1: chronyd.service
-Source2: chrony-conf
-Source3: chrony-sysusers.conf
-Source4: chrony-tmpfiles.conf
+Source1: https://chrony-project.org/releases/chrony-%{version}-tar-gz-asc.txt
+Source2: gpgkey-8F375C7E8D0EE125A3D3BD51537E2B76F7680DAC.asc
+
+Source11: chronyd.service
+Source12: chrony-conf
+Source13: chrony-sysusers.conf
+Source14: chrony-tmpfiles.conf
 
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libcap-devel
@@ -31,6 +34,7 @@ Requires: %{_cross_os}readline
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n chrony-%{version} -p1
 
 %build
@@ -47,13 +51,13 @@ CC=%{_cross_target}-gcc \
 %make_install
 
 install -d %{buildroot}%{_cross_unitdir}
-install -p -m 0644 %{S:1} %{buildroot}%{_cross_unitdir}/chronyd.service
+install -p -m 0644 %{S:11} %{buildroot}%{_cross_unitdir}/chronyd.service
 install -d %{buildroot}%{_cross_templatedir}
-install -p -m 0644 %{S:2} %{buildroot}%{_cross_templatedir}/chrony-conf
+install -p -m 0644 %{S:12} %{buildroot}%{_cross_templatedir}/chrony-conf
 install -d %{buildroot}%{_cross_sysusersdir}
-install -p -m 0644 %{S:3} %{buildroot}%{_cross_sysusersdir}/chrony.conf
+install -p -m 0644 %{S:13} %{buildroot}%{_cross_sysusersdir}/chrony.conf
 install -d %{buildroot}%{_cross_tmpfilesdir}
-install -p -m 0644 %{S:4} %{buildroot}%{_cross_tmpfilesdir}/chrony.conf
+install -p -m 0644 %{S:14} %{buildroot}%{_cross_tmpfilesdir}/chrony.conf
 
 %files
 %license COPYING
