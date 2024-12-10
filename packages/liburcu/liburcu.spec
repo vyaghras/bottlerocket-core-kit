@@ -1,11 +1,13 @@
 Name: %{_cross_os}liburcu
-Version: 0.14.0
+Version: 0.14.1
 Release: 1%{?dist}
 Epoch: 1
 Summary: Library for userspace RCU
 License: LGPL-2.1-only AND GPL-2.0-or-later AND MIT
 URL: http://liburcu.org
-Source0: http://lttng.org/files/urcu/userspace-rcu-latest-0.14.tar.bz2
+Source0: http://lttng.org/files/urcu/userspace-rcu-%{version}.tar.bz2
+Source1: http://lttng.org/files/urcu/userspace-rcu-%{version}.tar.bz2.asc
+Source2: gpgkey-2A0B4ED915F2D3FA45F5B16217280A9781186ACF.asc
 
 BuildRequires: %{_cross_os}glibc-devel
 
@@ -20,6 +22,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n userspace-rcu-%{version}
 
 %build
