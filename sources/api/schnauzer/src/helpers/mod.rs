@@ -819,7 +819,6 @@ fn validate_and_parse_cidr(cidr: &str) -> Result<IpAddr, RenderError> {
 
 /// kube_reserve_memory and kube_reserve_cpu are taken from EKS' calculations.
 /// https://github.com/awslabs/amazon-eks-ami/blob/db28da15d2b696bc08ac3aacc9675694f4a69933/files/bootstrap.sh
-
 /// Calculates the amount of memory to reserve for kubeReserved in mebibytes.
 /// Formula: memory_to_reserve = max_num_pods * 11 + 255 is taken from
 /// https://github.com/awslabs/amazon-eks-ami/pull/419#issuecomment-609985305

@@ -174,7 +174,7 @@ fn run(args: Args) -> Result<ExitCode> {
 }
 
 // Get the kernel parameters by reading /proc/cmdline file
-fn get_root_and_rootflags(target: &String) -> Result<KernelParams> {
+fn get_root_and_rootflags(target: &str) -> Result<KernelParams> {
     let params = fs::read_to_string("/proc/cmdline").context(error::FileReadSnafu)?;
     let mut root = String::new();
     let mut root_flags = String::new();

@@ -492,7 +492,6 @@ mod error {
 
     #[derive(Debug, Snafu)]
     #[snafu(visibility(pub(super)))]
-
     // snafu doesn't yet support the lifetimes used by std::sync::PoisonError.
     pub enum Error {
         #[snafu(display("Response '{}' from '{}': {}", get_status_code(source), uri, source))]

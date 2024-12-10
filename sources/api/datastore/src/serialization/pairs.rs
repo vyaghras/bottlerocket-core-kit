@@ -336,7 +336,7 @@ fn key_append_or_create(old_prefix: &Option<Key>, key: &Key) -> Result<Key> {
 /// separately, whereas we'd prefer a single pass because we only need to store the output.  To
 /// work around this, we use the Option 'key' in the struct to store the last-serialized key,
 /// knowing that serde will serialize keys and values in that order.
-impl<'a> ser::SerializeMap for Serializer<'a> {
+impl ser::SerializeMap for Serializer<'_> {
     type Ok = ();
     type Error = Error;
 
@@ -391,7 +391,7 @@ impl<'a> ser::SerializeMap for Serializer<'a> {
 /// Serialize structs, recursively handling any inner compound structures by using the key name as
 /// the new prefix.  (No need to use the struct's name; we're not at the root level, so it was
 /// already pointed to by some name.)
-impl<'a> ser::SerializeStruct for Serializer<'a> {
+impl ser::SerializeStruct for Serializer<'_> {
     type Ok = ();
     type Error = Error;
 
@@ -449,7 +449,7 @@ impl<'a> FlatSerializer<'a> {
     }
 }
 
-impl<'a> ser::SerializeSeq for FlatSerializer<'a> {
+impl ser::SerializeSeq for FlatSerializer<'_> {
     type Ok = ();
     type Error = Error;
 
