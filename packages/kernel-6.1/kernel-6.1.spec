@@ -1,13 +1,13 @@
 %global debug_package %{nil}
 
 Name: %{_cross_os}kernel-6.1
-Version: 6.1.115
+Version: 6.1.119
 Release: 1%{?dist}
 Summary: The Linux kernel
 License: GPL-2.0 WITH Linux-syscall-note
 URL: https://www.kernel.org/
 # Use latest-kernel-srpm-url.sh to get this.
-Source0: https://cdn.amazonlinux.com/al2023/blobstore/d6984bd6e9f17839ebf3e0b0c4d7dd72aeb4db5911bf697ed299caea93c83327/kernel-6.1.115-126.197.amzn2023.src.rpm
+Source0: https://cdn.amazonlinux.com/al2023/blobstore/c5625ba4f37a38809773fa50b769735602f1e4e50d60cb7127ed6231d0695e95/kernel-6.1.119-129.201.amzn2023.src.rpm
 # Use latest-neuron-srpm-url.sh to get this.
 Source1: https://yum.repos.neuron.amazonaws.com/aws-neuronx-dkms-2.18.12.0.noarch.rpm
 
@@ -42,8 +42,6 @@ Patch1004: 1004-af_unix-increase-default-max_dgram_qlen-to-512.patch
 # Drop AL revert of upstream patch to minimize delta. The necessary dependency
 # options for nvidia are instead included through DRM_SIMPLE
 Patch1005: 1005-Revert-Revert-drm-fb_helper-improve-CONFIG_FB-depend.patch
-# Prevent applications using io_uring from hanging
-Patch1100: 1100-io_uring-always-lock-__io_cqring_overflow_flush.patch
 
 BuildRequires: bc
 BuildRequires: elfutils-devel
@@ -1014,6 +1012,7 @@ install -p -m 0644 %{S:302} %{buildroot}%{_cross_bootconfigdir}/05-metal.conf
 %{_cross_kmoddir}/kernel/lib/ts_fsm.ko.*
 %{_cross_kmoddir}/kernel/lib/ts_kmp.ko.*
 %{_cross_kmoddir}/kernel/lib/zstd/zstd_compress.ko.*
+%{_cross_kmoddir}/kernel/mm/z3fold.ko.*
 %{_cross_kmoddir}/kernel/mm/zsmalloc.ko.*
 %{_cross_kmoddir}/kernel/net/8021q/8021q.ko.*
 %{_cross_kmoddir}/kernel/net/802/garp.ko.*
