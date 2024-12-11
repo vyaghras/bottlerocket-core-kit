@@ -125,7 +125,6 @@ mod error {
 
     #[derive(Debug, Snafu)]
     #[snafu(visibility(pub(super)))]
-
     pub enum PciClientError {
         #[snafu(display("Deserialization error: {}", source))]
         Serde { source: serde_json::Error },

@@ -500,8 +500,8 @@ async fn initiate_reboot() -> Result<()> {
 /// not a service, so we read these values from the config file and add them to the environment
 /// here.
 fn set_https_proxy_environment_variables(
-    https_proxy: &Option<String>,
-    no_proxy: &Option<Vec<String>>,
+    https_proxy: Option<&String>,
+    no_proxy: Option<&Vec<String>>,
 ) {
     let proxy = match https_proxy {
         Some(s) if !s.is_empty() => s.clone(),
@@ -531,7 +531,7 @@ async fn main_inner() -> Result<()> {
         serde_plain::from_str::<Command>(&arguments.subcommand).unwrap_or_else(|_| usage());
 
     let config = load_config().await?;
-    set_https_proxy_environment_variables(&config.https_proxy, &config.no_proxy);
+    set_https_proxy_environment_variables(config.https_proxy.as_ref(), config.no_proxy.as_ref());
     let current_release = BottlerocketRelease::new().context(error::ReleaseVersionSnafu)?;
     let variant = arguments.variant.unwrap_or(current_release.variant_id);
     let transport = HttpQueryTransport::new();

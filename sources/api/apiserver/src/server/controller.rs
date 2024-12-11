@@ -190,7 +190,7 @@ where
     )
     .transpose()
     // None is OK here - they could ask for a prefix we don't have
-    .unwrap_or_else(|| Ok(None))
+    .unwrap_or(Ok(None))
 }
 
 /// Build a ConfigurationFiles based on the data in the datastore.
@@ -234,7 +234,7 @@ where
     )
     .transpose()
     // None is OK here - they could ask for a prefix we don't have
-    .unwrap_or_else(|| Ok(None))
+    .unwrap_or(Ok(None))
 }
 
 /// Helper to get data from the datastore, starting with the given find_prefix, and deserialize it
