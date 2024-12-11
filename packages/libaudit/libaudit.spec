@@ -1,5 +1,5 @@
 Name: %{_cross_os}libaudit
-Version: 3.1.5
+Version: 4.0.2
 Release: 1%{?dist}
 Epoch: 1
 Summary: Library for the audit subsystem
@@ -59,7 +59,7 @@ make DESTDIR=%{buildroot} -C src install
 make DESTDIR=%{buildroot} -C auparse install
 
 # fix libtool sadness
-for b in auditctl auditd aureport ausearch autrace ; do
+for b in auditctl auditd aureport ausearch ; do
   mv %{buildroot}%{_cross_sbindir}/{%{_cross_target}-${b},${b}}
 done
 
@@ -89,6 +89,5 @@ install -p -m 0644 %{S:11} %{buildroot}%{_cross_datadir}/audit
 %exclude %{_cross_sbindir}/auditd
 %exclude %{_cross_sbindir}/aureport
 %exclude %{_cross_sbindir}/ausearch
-%exclude %{_cross_sbindir}/autrace
 
 %changelog

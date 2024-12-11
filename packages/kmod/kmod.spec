@@ -1,5 +1,5 @@
 Name: %{_cross_os}kmod
-Version: 31
+Version: 33
 Release: 1%{?dist}
 Summary: Tools for kernel module loading and unloading
 License: GPL-2.0-or-later AND LGPL-2.1-or-later
@@ -32,11 +32,12 @@ cp tools/COPYING COPYING.GPL
 
 mkdir static-build
 pushd static-build
-
 %cross_configure \
+  --with-noarch-pkgconfigdir=%{_cross_pkgconfigdir} \
   --with-zlib \
   --with-zstd \
-  --without-openssl
+  --without-openssl \
+  --disable-manpages
 
 %make_build LDFLAGS="-all-static"
 
@@ -46,9 +47,11 @@ mkdir dynamic-build
 pushd dynamic-build
 
 %cross_configure \
+  --with-noarch-pkgconfigdir=%{_cross_pkgconfigdir} \
   --with-zlib \
   --with-zstd \
-  --without-openssl
+  --without-openssl \
+  --disable-manpages
 
 %make_build
 
@@ -61,10 +64,6 @@ popd
 
 pushd static-build
 install -p tools/kmod %{buildroot}%{_cross_bindir}
-
-for b in depmod insmod lsmod modinfo modprobe rmmod ; do
-  ln -s kmod %{buildroot}%{_cross_bindir}/${b}
-done
 
 install -d %{buildroot}%{_cross_sbindir}
 ln -s ../bin/kmod %{buildroot}%{_cross_sbindir}/modprobe
@@ -83,12 +82,9 @@ popd
 %{_cross_sbindir}/modprobe
 %{_cross_libdir}/*.so.*
 %exclude %{_cross_datadir}/bash-completion
-%exclude %{_cross_mandir}
 
 %files devel
 %{_cross_libdir}/*.so
 %{_cross_includedir}/*.h
 %{_cross_pkgconfigdir}/*.pc
-%exclude %{_cross_libdir}/*.la
-
 %changelog

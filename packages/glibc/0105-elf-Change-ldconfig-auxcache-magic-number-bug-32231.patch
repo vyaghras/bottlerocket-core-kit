@@ -1,0 +1,49 @@
+From fa4ad104063204add2144df8151aa1135fffdd2d Mon Sep 17 00:00:00 2001
+From: Florian Weimer <fweimer@redhat.com>
+Date: Mon, 28 Oct 2024 14:45:30 +0100
+Subject: [PATCH] elf: Change ldconfig auxcache magic number (bug 32231)
+
+In commit c628c2296392ed3bf2cb8d8470668e64fe53389f (elf: Remove
+ldconfig kernel version check), the layout of auxcache entries
+changed because the osversion field was removed from
+struct aux_cache_file_entry.  However, AUX_CACHEMAGIC was not
+changed, so existing files are still used, potentially leading
+to unintended ldconfig behavior.  This commit changes AUX_CACHEMAGIC,
+so that the file is regenerated.
+
+Reported-by: DJ Delorie <dj@redhat.com>
+Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+(cherry picked from commit 0a536f6e2f76e3ef581b3fd9af1e5cf4ddc7a5a2)
+---
+ NEWS        | 1 +
+ elf/cache.c | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/NEWS b/NEWS
+index a2adce11ff..8feb39f1ba 100644
+--- a/NEWS
++++ b/NEWS
+@@ -59,6 +59,7 @@ The following bugs are resolved with this release:
+   [31968] mremap implementation in C does not handle arguments correctly
+   [32052] Name space violation in fortify wrappers
+   [32137] libio: Attempt wide backup free only for non-legacy code
++  [32231] elf: Change ldconfig auxcache magic number
+ 
+ Version 2.38
+ 
+diff --git a/elf/cache.c b/elf/cache.c
+index 8149f889ba..5de69ec4ca 100644
+--- a/elf/cache.c
++++ b/elf/cache.c
+@@ -823,7 +823,7 @@ struct aux_cache_entry
+   struct aux_cache_entry *next;
+ };
+ 
+-#define AUX_CACHEMAGIC		"glibc-ld.so.auxcache-1.0"
++#define AUX_CACHEMAGIC		"glibc-ld.so.auxcache-2.0"
+ 
+ struct aux_cache_file_entry
+ {
+-- 
+2.45.0
+

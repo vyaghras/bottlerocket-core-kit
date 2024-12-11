@@ -1,5 +1,5 @@
 Name: %{_cross_os}libsemanage
-Version: 3.6
+Version: 3.7
 Release: 1%{?dist}
 Epoch: 1
 Summary: Library for SELinux binary policy manipulation

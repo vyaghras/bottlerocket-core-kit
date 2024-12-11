@@ -1,12 +1,11 @@
 Name: %{_cross_os}socat
-Version: 1.8.0.0
+Version: 1.8.0.1
 Release: 1%{?dist}
 Epoch: 1
 Summary: Transfer data between two channels
 License: GPL-2.0-only
 URL: http://www.dest-unreach.org/socat/
 Source0: http://www.dest-unreach.org/socat/download/socat-%{version}.tar.gz
-Patch0001: 0001-xioopts-conditionally-compile-applyopts_termios_valu.patch
 
 BuildRequires: %{_cross_os}glibc-devel
 
@@ -57,6 +56,7 @@ BuildRequires: %{_cross_os}glibc-devel
   --disable-socketpair \
   --disable-socks4 \
   --disable-socks4a \
+  --disable-socks5 \
   --disable-stats \
   --disable-sycls \
   --disable-system \

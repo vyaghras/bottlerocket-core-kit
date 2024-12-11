@@ -1,12 +1,11 @@
 Name: %{_cross_os}libsepol
-Version: 3.6
+Version: 3.7
 Release: 1%{?dist}
 Epoch: 1
 Summary: Library for SELinux policy manipulation
 License: LGPL-2.1-or-later
 URL: https://github.com/SELinuxProject/
 Source0: https://github.com/SELinuxProject/selinux/releases/download/%{version}/libsepol-%{version}.tar.gz
-Patch0001: 0001-libsepol-cil-Check-common-perms-when-verifiying-all.patch
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
