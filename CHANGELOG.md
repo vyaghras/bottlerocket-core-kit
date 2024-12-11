@@ -1,3 +1,22 @@
+# v4.1.0 (2024-12-10)
+
+## OS Changes
+* Enable plugins and detailed EBS volume stats for `nvme-cli` ([#269])
+* Set `LoaderTimeInitUSec` and `LoaderTimeExecUSec` in GRUB ([#273])
+* Third party package updates ([#303], [#308], [#311])
+* Update kernel to v6.1.119 ([#309])
+
+## Build Changes
+* Update twoliter to 0.6.0 ([#302])
+
+[#269]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/269
+[#273]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/273
+[#302]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/302
+[#303]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/303
+[#308]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/308
+[#309]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/309
+[#311]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/311
+
 # v4.0.1 (2024-12-05)
 
 ## OS Changes
