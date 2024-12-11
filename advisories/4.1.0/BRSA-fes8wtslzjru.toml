@@ -1,0 +1,17 @@
+[advisory]
+id = "BRSA-fes8wtslzjru"
+title = "kernel CVE-2024-41080"
+cve = "CVE-2024-41080"
+severity = "moderate"
+description = "In the Linux kernel, the following vulnerability has been resolved: io_uring: fix possible deadlock in io_register_iowq_max_workers()"
+
+[[advisory.products]]
+package-name = "kernel-6.1"
+patched-version = "6.1.119"
+patched-epoch = "0"
+
+[updateinfo]
+author = "giinglis"
+issue-date = 2024-12-11T18:17:05Z
+arches = ["x86_64", "aarch64"]
+version = "4.1.0"
