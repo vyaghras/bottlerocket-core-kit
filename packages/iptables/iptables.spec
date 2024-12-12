@@ -1,11 +1,13 @@
 Name: %{_cross_os}iptables
-Version: 1.8.10
+Version: 1.8.11
 Release: 1%{?dist}
 Epoch: 1
 Summary: Tools for managing Linux kernel packet filtering capabilities
 License: GPL-2.0-or-later AND GPL-2.0-only
 URL: http://www.netfilter.org/
 Source0: https://www.netfilter.org/projects/iptables/files/iptables-%{version}.tar.xz
+Source1: https://www.netfilter.org/projects/iptables/files/iptables-%{version}.tar.xz.sig
+Source2: gpgkey-8C5F7146A1757A65E2422A94D70D1A666ACF2B21.asc
 
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libmnl-devel
@@ -28,6 +30,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n iptables-%{version} -p1
 
 %build
