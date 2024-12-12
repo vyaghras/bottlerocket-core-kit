@@ -5,6 +5,8 @@ Summary: A set of basic GNU tools
 License: GPL-3.0-or-later
 URL: https://www.gnu.org/software/coreutils/
 Source0: https://ftp.gnu.org/gnu/coreutils/coreutils-%{version}.tar.xz
+Source1: https://ftp.gnu.org/gnu/coreutils/coreutils-%{version}.tar.xz.sig
+Source2: gpgkey-6C37DC12121A5006BC1DB804DF6FD971306037D9.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libacl-devel
 BuildRequires: %{_cross_os}libattr-devel
@@ -21,6 +23,7 @@ Requires: %{_cross_os}libxcrypt
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n coreutils-%{version} -p1
 
 %build

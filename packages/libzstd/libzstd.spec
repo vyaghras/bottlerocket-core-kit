@@ -6,6 +6,8 @@ Summary: Library for Zstandard compression
 License: BSD-3-Clause AND GPL-2.0-only
 URL: https://github.com/facebook/zstd/
 Source0: https://github.com/facebook/zstd/releases/download/v%{version}/zstd-%{version}.tar.gz
+Source1: https://github.com/facebook/zstd/releases/download/v%{version}/zstd-%{version}.tar.gz.sig
+Source2: gpgkey-4EF4AC63455FC9F4545D9B7DEF8FE99528B52FFD.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -19,6 +21,7 @@ Requires: %{_cross_os}libzstd
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n zstd-%{version}
 
 %global set_env \

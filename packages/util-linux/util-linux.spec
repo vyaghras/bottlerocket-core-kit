@@ -9,6 +9,8 @@ Summary: A collection of basic system utilities
 License: BSD-3-Clause AND BSD-4-Clause-UC AND GPL-1.0-or-later AND GPL-2.0-only AND GPL-2.0-or-later AND GPL-3.0-or-later AND LGPL-2.0-or-later AND LGPL-2.1-or-later AND MIT
 URL: http://en.wikipedia.org/wiki/Util-linux
 Source0: https://www.kernel.org/pub/linux/utils/util-linux/v%{majorminor}/util-linux-%{version}.tar.xz
+Source1: https://www.kernel.org/pub/linux/utils/util-linux/v%{majorminor}/util-linux-%{version}.tar.sign
+Source2: gpgkey-B0C64D14301CC6EFAEDF60E4E4B71D5EEC39C284.asc
 
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libacl-devel
@@ -106,6 +108,7 @@ Requires: %{_cross_os}libuuid
 %{summary}.
 
 %prep
+%{gpgverify} --data=<(xzcat %{S:0}) --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n util-linux-%{version} -p1
 
 cp Documentation/licenses/COPYING.* .

@@ -6,6 +6,8 @@ Summary: Library for enhanced seccomp
 License: LGPL-2.1-only
 URL: https://github.com/seccomp/libseccomp
 Source0: https://github.com/seccomp/libseccomp/releases/download/v%{version}/libseccomp-%{version}.tar.gz
+Source1: https://github.com/seccomp/libseccomp/releases/download/v%{version}/libseccomp-%{version}.tar.gz.asc
+Source2: gpgkey-47A68FCE37C7D7024FD65E11356CE62C2B524099.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description

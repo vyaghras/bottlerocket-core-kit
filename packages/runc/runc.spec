@@ -14,6 +14,11 @@ Summary: CLI for running Open Containers
 License: Apache-2.0
 URL: https://%{goimport}
 Source0: https://%{goimport}/releases/download/v%{gover}/%{gorepo}.tar.xz#/%{gorepo}-v%{gover}.tar.xz
+Source1: https://%{goimport}/releases/download/v%{gover}/%{gorepo}.tar.xz.asc#/%{gorepo}-v%{gover}.tar.xz.asc
+# Aleksa Sarai
+Source2: gpgkey-B64E4955B29FA3D463F2A9062897FAD2B7E9446F.asc
+# Kir Kolyshkin
+Source3: gpgkey-C2428CD75720FACDCF76B6EA17DE5ECB75A1100E.asc
 
 BuildRequires: git
 BuildRequires: %{_cross_os}glibc-devel
@@ -43,6 +48,7 @@ Conflicts: (%{_cross_os}image-feature(no-fips) or %{name}-bin)
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:3}
 %autosetup -Sgit -n %{gorepo}-%{gover} -p1
 %cross_go_setup %{gorepo}-%{gover} %{goproject} %{goimport}
 

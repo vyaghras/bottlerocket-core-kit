@@ -5,7 +5,9 @@ Epoch: 1
 Summary: Library for zlib compression
 URL: https://www.zlib.net/
 License: Zlib
-Source: https://www.zlib.net/zlib-%{version}.tar.xz
+Source0: https://www.zlib.net/zlib-%{version}.tar.xz
+Source1: https://www.zlib.net/zlib-%{version}.tar.xz.asc
+Source2: gpgkey-5ED46A6721D365587791E2AA783FCD8E58BCAFBA.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -19,7 +21,8 @@ Requires: %{name}
 %{summary}.
 
 %prep
-%setup -n zlib-%{version}
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
+%autosetup -n zlib-%{version} -p1
 
 # Sets cross build flags, target cross compiler, and env variables
 # required to `make install` libz

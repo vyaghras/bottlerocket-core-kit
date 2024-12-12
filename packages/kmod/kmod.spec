@@ -5,6 +5,8 @@ Summary: Tools for kernel module loading and unloading
 License: GPL-2.0-or-later AND LGPL-2.1-or-later
 URL: http://git.kernel.org/?p=utils/kernel/kmod/kmod.git;a=summary
 Source0: https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-%{version}.tar.xz
+Source1: https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-%{version}.tar.sign
+Source2: gpgkey-EAB33C9690013C733916AC839BA2A5A630CBEA53.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libz-devel
 BuildRequires: %{_cross_os}libzstd-devel
@@ -22,6 +24,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=<(xzcat %{S:0}) --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n kmod-%{version} -p1
 cp COPYING COPYING.LGPL
 cp tools/COPYING COPYING.GPL

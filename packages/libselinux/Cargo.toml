@@ -15,6 +15,10 @@ releases-url = "https://github.com/SELinuxProject/selinux/releases/"
 url = "https://github.com/SELinuxProject/selinux/releases/download/3.7/libselinux-3.7.tar.gz"
 sha512 = "e949c20b606c50ad521b9592ce55ad6658e8c4b24d9838028f5aba0a4fc762b6d0d0d0d207f5bef7a2e41485e12d91382fa6090df27152dbb40071b273419352"
 
+[[package.metadata.build-package.external-files]]
+url = "https://github.com/SELinuxProject/selinux/releases/download/3.7/libselinux-3.7.tar.gz.asc"
+sha512 = "5be2fdc0deda62f240276413d1b95a57d467fe989ddb31b34f7743cbd03d69385ac3321af10c97aded119ae5f0a4d8ec5894f8647a45f2902c0e8ff1e96787aa"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libpcre = { path = "../libpcre" }

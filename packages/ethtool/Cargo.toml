@@ -15,6 +15,10 @@ releases-url = "https://kernel.org/pub/software/network/ethtool/"
 url = "https://mirrors.edge.kernel.org/pub/software/network/ethtool/ethtool-6.11.tar.xz"
 sha512 = "77f649e1082a164e3627bcb21db1215a89d9a0e984f86516bb05879685aee76b034f6a9e19a499dcdd82883fa003f628b70d27ca8272064df27fe9de67c7a9a7"
 
+[[package.metadata.build-package.external-files]]
+url = "https://mirrors.edge.kernel.org/pub/software/network/ethtool/ethtool-6.11.tar.sign"
+sha512 = "9a0ea5a1ab140a69bc13e844e2e919101ea0e3994a503b49ba5009e83ba4609d047c823dbc58b172ca0488591be066f43b66f1eea7597532930a83dddcc5e556"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libmnl = { path = "../libmnl" }

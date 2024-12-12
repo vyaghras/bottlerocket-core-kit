@@ -6,6 +6,8 @@ Summary: pigz is a parallel implementation of gzip which utilizes multiple cores
 License: Zlib AND Apache-2.0
 URL: http://www.zlib.net/pigz
 Source0: https://zlib.net/pigz/pigz-%{version}.tar.gz
+Source1: https://zlib.net/pigz/pigz-%{version}-sig.txt
+Source2: gpgkey-5ED46A6721D365587791E2AA783FCD8E58BCAFBA.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libz-devel
 
@@ -13,6 +15,7 @@ BuildRequires: %{_cross_os}libz-devel
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n pigz-%{version} -p1
 
 %global set_env \

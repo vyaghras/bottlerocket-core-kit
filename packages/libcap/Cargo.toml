@@ -16,6 +16,10 @@ releases-url = "https://cdn.kernel.org/pub/linux/libs/security/linux-privs/libca
 url = "https://cdn.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.70.tar.gz"
 sha512 = "2a4a5959958989e6a0d54ea795a706b0f12596778ac660b19b7b1479910af01b4d870111b060dac0b1cd4671b98d815ea5953cefd4edde1a0ba9efe22f897842"
 
+[[package.metadata.build-package.external-files]]
+url = "https://cdn.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.70.tar.sign"
+sha512 = "d8a7d631d74ecdfad731e5d36087d959f9279ed837b20ed57bb518129f1ba6d144927987ca50a5459cc72d5374fe3a987583c1d5c88213e7f57f344ed698c71f"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libattr = { path = "../libattr" }

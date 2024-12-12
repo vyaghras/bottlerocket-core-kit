@@ -6,6 +6,8 @@ Summary: Library for netfilter cthelper
 License: GPL-2.0-or-later
 URL: http://netfilter.org
 Source0: https://netfilter.org/projects/libnetfilter_cthelper/files/libnetfilter_cthelper-%{version}.tar.bz2
+Source1: https://netfilter.org/projects/libnetfilter_cthelper/files/libnetfilter_cthelper-%{version}.tar.bz2.sig
+Source2: gpgkey-37D964ACC04981C75500FB9BD55D978A8A1420E4.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libmnl-devel
 Requires: %{_cross_os}libmnl
@@ -21,6 +23,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libnetfilter_cthelper-%{version} -p1
 
 %build

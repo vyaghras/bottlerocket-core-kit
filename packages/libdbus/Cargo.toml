@@ -15,6 +15,10 @@ releases-url = "https://dbus.freedesktop.org/releases/dbus"
 url = "https://dbus.freedesktop.org/releases/dbus/dbus-1.15.12.tar.xz"
 sha512 = "9af8ee28d61e1794eacd8cdecd6a68fa32ab5ea229df32f7112ed67f1aa8e57dd9a595ceaf42621891b50074e6f5a0cdd8c76f7d5882633446d0b81c40434cc0"
 
+[[package.metadata.build-package.external-files]]
+url = "https://dbus.freedesktop.org/releases/dbus/dbus-1.15.12.tar.xz.asc"
+sha512 = "7782899dab19ccb78c6a76bb2fd69e37171a05249c9e0fd937998f4468c201b651f1b655a4789d468651004269ae78072a4561143c6c29b0b604e64c881d720f"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libcap = { path = "../libcap" }

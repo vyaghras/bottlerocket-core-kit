@@ -6,6 +6,8 @@ Summary: Library for a message bus
 License: AFL-2.1 OR GPL-2.0-or-later
 URL: http://www.freedesktop.org/Software/dbus/
 Source0: https://dbus.freedesktop.org/releases/dbus/dbus-%{version}.tar.xz
+Source1: https://dbus.freedesktop.org/releases/dbus/dbus-%{version}.tar.xz.asc
+Source2: gpgkey-7A073AD1AE694FA25BFF62E5235C099D3EB33076.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libcap-devel
 BuildRequires: %{_cross_os}libexpat-devel
@@ -23,6 +25,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n dbus-%{version} -p1
 
 %build

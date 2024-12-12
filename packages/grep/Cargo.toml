@@ -15,6 +15,10 @@ releases-url = "https://mirrors.kernel.org/gnu/grep"
 url = "https://mirrors.kernel.org/gnu/grep/grep-3.11.tar.xz"
 sha512 = "f254a1905a08c8173e12fbdd4fd8baed9a200217fba9d7641f0d78e4e002c1f2a621152d67027d9b25f0bb2430898f5233dc70909d8464fd13d7dd9298e65c42"
 
+[[package.metadata.build-package.external-files]]
+url = "https://mirrors.kernel.org/gnu/grep/grep-3.11.tar.xz.sig"
+sha512 = "487aba063373ca0594c519991f19b2a6a33b3da0d74735c890f3828fd0880e7e6f64495d2c8f9efa5da53d1eb2d446609bab2399a4b89dcb4510a632e31ffb54"
+
 [build-dependencies]
 libpcre = { path = "../libpcre" }
 glibc = { path = "../glibc" }

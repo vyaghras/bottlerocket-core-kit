@@ -15,6 +15,10 @@ releases-url = "https://mirrors.edge.kernel.org/pub/linux/utils/fs/xfs/xfsprogs/
 url = "http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/xfsprogs-6.9.0.tar.xz"
 sha512 = "c597453759c400690810971f0b2daf0e4e22c74270b0f9800e2235da5e5c1383b59bc1176c5bba0023f74b623020fb51c62f0e98a74885cf3a8336e0b81c9023"
 
+[[package.metadata.build-package.external-files]]
+url = "http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/xfsprogs-6.9.0.tar.sign"
+sha512 = "a6775e5121c5c4ffff1021dbcc36bead9b4cb3d1464b385b89b3866633671aa925ba97574cd4d3302f42597300e8b3bf6897eccdb9dbf69ba0dc8b1ed53c4e2d"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libinih = { path = "../libinih" }

@@ -6,6 +6,8 @@ Summary: Library for extended attribute support
 License: LGPL-2.1-or-later
 URL: https://savannah.nongnu.org/projects/attr
 Source0: https://download-mirror.savannah.gnu.org/releases/attr/attr-%{version}.tar.xz
+Source1: https://download-mirror.savannah.gnu.org/releases/attr/attr-%{version}.tar.xz.sig
+Source2: gpgkey-B902B5271325F892AC251AD441633B9FE837F581.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -19,6 +21,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n attr-%{version} -p1
 
 %build

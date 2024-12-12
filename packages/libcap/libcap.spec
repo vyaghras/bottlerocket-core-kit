@@ -6,6 +6,8 @@ Summary: Library for getting and setting POSIX.1e capabilities
 License: GPL-2.0-only OR BSD-3-Clause
 URL: https://sites.google.com/site/fullycapable/
 Source0: https://git.kernel.org/pub/scm/libs/libcap/libcap.git/snapshot/libcap-%{version}.tar.gz
+Source1: https://git.kernel.org/pub/scm/libs/libcap/libcap.git/snapshot/libcap-%{version}.tar.sign
+Source2: gpgkey-38A644698C69787344E954CE29EE848AE2CCF3F4.asc
 BuildRequires: libcap-devel
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libattr-devel
@@ -25,6 +27,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=<(zcat %{S:0}) --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libcap-%{version} -p1
 
 %global cross_make \

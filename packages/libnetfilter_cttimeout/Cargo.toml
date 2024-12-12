@@ -15,6 +15,10 @@ releases-url = "https://netfilter.org/projects/libnetfilter_cttimeout/files"
 url = "https://netfilter.org/projects/libnetfilter_cttimeout/files/libnetfilter_cttimeout-1.0.1.tar.bz2"
 sha512 = "3f7886b2b8c67fb45d9f6d03f8a327d0f04072abf75ec0fa310f4a321a1749607e79b48f47c8b8488f9833734689419264afada0cbc1f0360a5ae9e17d4a1100"
 
+[[package.metadata.build-package.external-files]]
+url = "https://netfilter.org/projects/libnetfilter_cttimeout/files/libnetfilter_cttimeout-1.0.1.tar.bz2.sig"
+sha512 = "da491294392d94ddf7f1267607bc631ffc564a9e21b439b60a13b7d1259b7a80bc0d4f70208a79f0b674c26ac434c924216775bbe968d56bce5f3fa587eef3fb"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libmnl = { path = "../libmnl" }

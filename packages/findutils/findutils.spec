@@ -5,6 +5,8 @@ Summary: A set of GNU tools for finding
 License: GPL-3.0-or-later
 URL: http://www.gnu.org/software/findutils/
 Source0: https://ftp.gnu.org/pub/gnu/findutils/findutils-%{version}.tar.xz
+Source1: https://ftp.gnu.org/pub/gnu/findutils/findutils-%{version}.tar.xz.sig
+Source2: gpgkey-A5189DB69C1164D33002936646502EF796917195.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libselinux-devel
 Requires: %{_cross_os}libselinux
@@ -13,6 +15,7 @@ Requires: %{_cross_os}libselinux
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n findutils-%{version} -p1
 
 %build

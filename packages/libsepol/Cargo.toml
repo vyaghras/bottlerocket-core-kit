@@ -15,5 +15,9 @@ releases-url = "https://github.com/SELinuxProject/selinux/releases/"
 url = "https://github.com/SELinuxProject/selinux/releases/download/3.7/libsepol-3.7.tar.gz"
 sha512 = "85d12d0ba5a7a3225f08d041a18fd59641608db5e0a78a1e9649754e45be54a807cd422d4889b88da6e806b4af546336c7a0913448f08ac33dc6ffb983890ef8"
 
+[[package.metadata.build-package.external-files]]
+url = "https://github.com/SELinuxProject/selinux/releases/download/3.7/libsepol-3.7.tar.gz.asc"
+sha512 = "1c9255d99dbcb823d8bee57e9e617bf9de3d7f45727e6190cf36472d6a489b563a1d0766607806bb498ef5bfadb4ada85c7bd343f6f82eca5c405218d0723318"
+
 [build-dependencies]
 glibc = { path = "../glibc" }

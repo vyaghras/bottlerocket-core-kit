@@ -6,6 +6,8 @@ Summary: Tools for managing ext2, ext3, and ext4 file systems
 License: GPL-2.0-only AND LGPL-2.0-only AND LGPL-2.0-or-later AND BSD-3-Clause
 URL: http://e2fsprogs.sourceforge.net/
 Source0: https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/%{version}/e2fsprogs-%{version}.tar.xz
+Source1: https://mirrors.edge.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/%{version}/e2fsprogs-%{version}.tar.sign
+Source2: gpgkey-2B69B954DBFE0879288137C9F2F95956950D81A3.asc
 Source10: mke2fs.conf
 Source11: e2fsprogs-tmpfiles.conf
 
@@ -31,6 +33,7 @@ Requires: %{_cross_os}e2fsprogs-libs
 %{summary}.
 
 %prep
+%{gpgverify} --data=<(xzcat %{S:0}) --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n e2fsprogs-%{version} -p1
 
 %build

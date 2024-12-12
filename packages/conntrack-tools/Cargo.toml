@@ -15,6 +15,10 @@ releases-url = "https://www.netfilter.org/projects/conntrack-tools/files"
 url = "https://www.netfilter.org/projects/conntrack-tools/files/conntrack-tools-1.4.8.tar.xz"
 sha512 = "95d8f6f068c1342ad7e767537e722272a4f5bd8b46b952713ade053a1043aa9ababbe5ce658ede9c77b6de5221b97ad8833777caffd69b67dd70a99f2b45afdf"
 
+[[package.metadata.build-package.external-files]]
+url = "https://www.netfilter.org/projects/conntrack-tools/files/conntrack-tools-1.4.8.tar.xz.sig"
+sha512 = "8cd229d2e980ab1788e90fc8f53827fe1e4b21801cad6cddf6a9ff537501c40c52242cc964005b2889ad0a4548c772304db8696d4644611ecf9f091aca5c14ee"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libmnl = { path = "../libmnl" }

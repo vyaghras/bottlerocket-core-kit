@@ -6,6 +6,8 @@ Summary: A set of SELinux policy tools
 License: GPL-2.0-only
 URL: https://github.com/SELinuxProject/
 Source0: https://github.com/SELinuxProject/selinux/releases/download/%{version}/policycoreutils-%{version}.tar.gz
+Source1: https://github.com/SELinuxProject/selinux/releases/download/%{version}/policycoreutils-%{version}.tar.gz.asc
+Source2: gpgkey-1BE2C0FF08949623102FD2564695881C254508D1.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libselinux-devel
 BuildRequires: %{_cross_os}libsemanage-devel
@@ -19,6 +21,7 @@ Requires: %{_cross_os}libsepol
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n policycoreutils-%{version} -p1
 
 %global set_env \
