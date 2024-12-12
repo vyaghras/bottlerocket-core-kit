@@ -1,5 +1,5 @@
 %global gorepo soci-snapshotter
-%global gover 0.7.0
+%global gover 0.8.0
 %global rpmver %{gover}
 
 Name: %{_cross_os}soci-snapshotter
