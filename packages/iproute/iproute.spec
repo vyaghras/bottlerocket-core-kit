@@ -1,10 +1,12 @@
 Name: %{_cross_os}iproute
-Version: 6.9.0
+Version: 6.12.0
 Release: 1%{?dist}
 Summary: Tools for advanced IP routing and network device configuration
 License: GPL-2.0-or-later AND GPL-2.0-only
 URL: https://kernel.org/pub/linux/utils/net/iproute2/
 Source0: https://kernel.org/pub/linux/utils/net/iproute2/iproute2-%{version}.tar.xz
+Source1: https://kernel.org/pub/linux/utils/net/iproute2/iproute2-%{version}.tar.sign
+Source2: gpgkey-9F6FC345B05BE7E766B83C8F80A77F6095CDE47E.asc
 Patch1: 0001-skip-libelf-check.patch
 
 BuildRequires: %{_cross_os}glibc-devel
@@ -19,6 +21,7 @@ Requires: %{_cross_os}libselinux
 %{summary}.
 
 %prep
+%{gpgverify} --data=<(xzcat %{S:0}) --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n iproute2-%{version} -p1
 
 %global set_env \
