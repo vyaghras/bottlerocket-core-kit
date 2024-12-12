@@ -1,7 +1,8 @@
-diff -up ncurses-6.0-20150810/misc/terminfo.src.urxvt ncurses-6.0-20150810/misc/terminfo.src
---- ncurses-6.0-20150810/misc/terminfo.src.urxvt	2015-07-25 21:27:20.000000000 +0200
-+++ ncurses-6.0-20150810/misc/terminfo.src	2015-08-12 17:38:46.050362567 +0200
-@@ -5214,6 +5214,181 @@ rxvt-cygwin-native|rxvt terminal emulato
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index 489c480..2df7701 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -6974,6 +6974,181 @@ rxvt-cygwin-native|rxvt terminal emulator (native MS Window System port) on cygw
  rxvt-16color|rxvt with 16 colors like aixterm,
  	ncv#32, use=ibm+16color, use=rxvt,
  
@@ -183,3 +184,6 @@ diff -up ncurses-6.0-20150810/misc/terminfo.src.urxvt ncurses-6.0-20150810/misc/
  #### MRXVT
  # mrxvt 0.5.4
  #
+-- 
+2.47.0
+
