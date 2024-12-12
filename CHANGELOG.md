@@ -1,3 +1,26 @@
+# v5.0.0 (2024-12-12)
+
+## OS Changes
+* Update binutil to 2.41 ([#306])
+
+## Build Changes
+* Update bottlerocket-sdk to v0.5.0 ([#306])
+* Remove the following packages that move to the kernel-kit ([#313])
+  * grub
+  * kernel-5.10
+  * kernel-5.15
+  * kernel-6.1
+  * kmod-5.10-nvidia
+  * kmod-5.15-nvidia
+  * kmod-6.1-nvidia
+  * libkcapi
+  * linux-firmware
+  * microcode
+  * shim
+
+[#306]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/306
+[#313]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/313
+
 # v4.1.0 (2024-12-10)
 
 ## OS Changes
