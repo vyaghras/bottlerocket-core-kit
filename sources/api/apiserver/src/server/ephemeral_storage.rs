@@ -23,6 +23,12 @@ static EPHEMERAL_MNT: &str = ".ephemeral";
 static RAID_DEVICE_DIR: &str = "/dev/md/";
 static RAID_DEVICE_NAME: &str = "ephemeral";
 
+pub struct BindDirs {
+    pub allowed_exact: HashSet<&'static str>,
+    pub allowed_prefixes: HashSet<&'static str>,
+    pub disallowed_contains: HashSet<&'static str>,
+}
+
 /// initialize prepares the ephemeral storage for formatting and formats it.  For multiple disks
 /// preparation is the creation of a RAID0 array, for a single disk this is a no-op. The array or disk
 /// is then formatted with the specified filesystem (default=xfs) if not formatted already.
@@ -116,8 +122,17 @@ pub fn bind(variant: &str, dirs: Vec<String>) -> Result<()> {
     let mount_point = Path::new(&mount_point);
     let allowed_dirs = allowed_bind_dirs(variant);
     for dir in &dirs {
+        let exact_match = allowed_dirs.allowed_exact.contains(dir.as_str());
+        let prefix_match = allowed_dirs
+            .allowed_prefixes
+            .iter()
+            .any(|prefix| dir.starts_with(prefix));
+        let disallowed_match = allowed_dirs
+            .disallowed_contains
+            .iter()
+            .any(|contains| dir.contains(contains));
         ensure!(
-            allowed_dirs.contains(dir.as_str()),
+            exact_match || (prefix_match && !disallowed_match),
             error::InvalidParameterSnafu {
                 parameter: dir,
                 reason: "specified bind directory not in allow list",
@@ -269,18 +284,26 @@ pub fn ephemeral_devices() -> Result<Vec<String>> {
 }
 
 /// allowed_bind_dirs returns a set of the directories that can be bound to ephemeral storage, which
-/// varies based on the variant
-pub fn allowed_bind_dirs(variant: &str) -> HashSet<&'static str> {
-    let mut allowed = HashSet::from(["/var/lib/containerd", "/var/lib/host-containerd"]);
+/// varies based on the variant, a set of the prefixes of directories that are allowed to be bound.
+/// and a set of substrings that are disallowed in the directory name.
+pub fn allowed_bind_dirs(variant: &str) -> BindDirs {
+    let mut allowed_exact = HashSet::from(["/var/lib/containerd", "/var/lib/host-containerd"]);
     if variant.contains("k8s") {
-        allowed.insert("/var/lib/kubelet");
-        allowed.insert("/var/log/pods");
+        allowed_exact.insert("/var/lib/kubelet");
+        allowed_exact.insert("/var/log/pods");
     }
     if variant.contains("ecs") {
-        allowed.insert("/var/lib/docker");
-        allowed.insert("/var/log/ecs");
+        allowed_exact.insert("/var/lib/docker");
+        allowed_exact.insert("/var/log/ecs");
     }
-    allowed
+    let allowed_prefixes = HashSet::from(["/mnt/"]);
+    let disallowed_contains = HashSet::from(["..", "/mnt/.ephemeral"]);
+
+    BindDirs {
+        allowed_exact,
+        allowed_prefixes,
+        disallowed_contains,
+    }
 }
 
 /// scans the raid array to identify if it has been created already

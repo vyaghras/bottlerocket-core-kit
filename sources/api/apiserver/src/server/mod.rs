@@ -703,18 +703,22 @@ async fn list_ephemeral_storage_dirs(
 ) -> Result<HttpResponse> {
     let os_info = controller::get_os_info()?;
 
-    let allowed = ephemeral_storage::allowed_bind_dirs(&os_info.variant_id);
+    let allowed_dirs = ephemeral_storage::allowed_bind_dirs(&os_info.variant_id);
     let mut text_response = String::new();
-    for dir in &allowed {
+    for dir in &allowed_dirs.allowed_exact {
         text_response.push_str(dir);
         text_response.push('\n');
     }
 
-    let allowed: Vec<String> = allowed.iter().map(|x| String::from(*x)).collect();
+    let allowed: Vec<String> = allowed_dirs
+        .allowed_exact
+        .iter()
+        .map(|x| String::from(*x))
+        .collect();
     list_ephemeral_response(req, query, allowed, text_response).await
 }
 
-// Responds to a list request with the text or JSON resposne depending on the query format.
+// Responds to a list request with the text or JSON response depending on the query format.
 async fn list_ephemeral_response(
     req: HttpRequest,
     query: web::Query<HashMap<String, String>>,
