@@ -1,11 +1,11 @@
 # v5.0.0 (2024-12-12)
 
 ## OS Changes
-* Update binutil to 2.41 ([#306])
+* Update binutils to 2.41 ([#306])
 
 ## Build Changes
 * Update bottlerocket-sdk to v0.5.0 ([#306])
-* Remove the following packages that move to the kernel-kit ([#313])
+* Remove the following packages and migrate them to the [kernel-kit](https://github.com/bottlerocket-os/bottlerocket-kernel-kit) ([#313])
   * grub
   * kernel-5.10
   * kernel-5.15
