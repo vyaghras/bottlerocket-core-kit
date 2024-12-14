@@ -1,3 +1,17 @@
+# v5.1.0 (2024-12-16)
+
+## OS Changes
+
+* Update `golang.org/x/crypto` from 0.27.0 to 0.31.0 in /sources/host-ctr ([#315])
+
+## Orchestrator Changes
+
+### Kubernetes
+* Add beta sources for kubernetes-1.32 and ecr-credential-provider-1.32 ([#317])
+
+[#315]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/315
+[#317]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/317
+
 # v5.0.0 (2024-12-12)
 
 ## OS Changes
