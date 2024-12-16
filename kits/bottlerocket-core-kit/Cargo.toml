@@ -36,6 +36,7 @@ ecr-credential-provider-1_27 = { path = "../../packages/ecr-credential-provider-
 ecr-credential-provider-1_29 = { path = "../../packages/ecr-credential-provider-1.29" }
 ecr-credential-provider-1_30 = { path = "../../packages/ecr-credential-provider-1.30" }
 ecr-credential-provider-1_31 = { path = "../../packages/ecr-credential-provider-1.31" }
+ecr-credential-provider-1_32 = { path = "../../packages/ecr-credential-provider-1.32" }
 ecr-credential-provider = { path = "../../packages/ecr-credential-provider" }
 ecs-agent = { path = "../../packages/ecs-agent" }
 ecs-gpu-init = { path = "../../packages/ecs-gpu-init" }
@@ -59,6 +60,7 @@ kubernetes-1_28 = { path = "../../packages/kubernetes-1.28" }
 kubernetes-1_29 = { path = "../../packages/kubernetes-1.29" }
 kubernetes-1_30 = { path = "../../packages/kubernetes-1.30" }
 kubernetes-1_31 = { path = "../../packages/kubernetes-1.31" }
+kubernetes-1_32 = { path = "../../packages/kubernetes-1.32" }
 libacl = { path = "../../packages/libacl" }
 libattr = { path = "../../packages/libattr" }
 libaudit = { path = "../../packages/libaudit" }
