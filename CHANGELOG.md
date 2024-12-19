@@ -1,3 +1,18 @@
+# v5.2.0 (2024-12-20)
+
+## OS Changes
+* Third party package updates ([#322], [#323], [#324], [#325], [#328])
+
+## Build Changes
+* Add GPG verification where possible ([#321])
+
+[#321]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/321
+[#322]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/322
+[#323]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/323
+[#324]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/324
+[#325]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/325
+[#328]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/328
+
 # v5.1.0 (2024-12-16)
 
 ## OS Changes
