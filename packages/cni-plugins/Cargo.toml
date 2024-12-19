@@ -12,8 +12,8 @@ path = "../packages.rs"
 releases-url = "https://github.com/containernetworking/plugins/releases"
 
 [[package.metadata.build-package.external-files]]
-url = "https://github.com/containernetworking/plugins/archive/v1.5.1/plugins-1.5.1.tar.gz"
-sha512 = "d2e01958dd8328407164cb6be9d962321742dae7011ce7cd7b2342f5e4b4bbcd992d8249c53d3d81250a60c27f049969bbf329a75440524f52c1f1466b6e7132"
+url = "https://github.com/containernetworking/plugins/archive/v1.6.1/plugins-1.6.1.tar.gz"
+sha512 = "62b4e2c5c4bf6a9b21880e7b145547bec153f591926419d9960345cc7fb7d499ae44b0236928bbfeb46e383f38018d7504e58da1dd8a6ad39ef4ae3122b3be56"
 
 [build-dependencies]
 glibc = { path = "../glibc" }

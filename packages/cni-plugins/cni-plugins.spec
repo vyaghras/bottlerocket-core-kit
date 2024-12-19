@@ -2,7 +2,7 @@
 %global gorepo plugins
 %global goimport %{goproject}/%{gorepo}
 
-%global gover 1.5.1
+%global gover 1.6.1
 %global rpmver %{gover}
 
 %global _dwz_low_mem_die_limit 0
@@ -48,6 +48,7 @@ Conflicts: (%{_cross_os}image-feature(no-fips) or %{name}-bin)
 
 %build
 %cross_go_configure %{goimport}
+export GO_MAJOR="1.23"
 for d in $(find plugins -mindepth 2 -maxdepth 2 -type d ! -name windows) ; do
   go build -ldflags="${GOLDFLAGS}" -o "bin/${d##*/}" %{goimport}/${d}
   gofips build -ldflags="${GOLDFLAGS}" -o "fips/bin/${d##*/}" %{goimport}/${d}

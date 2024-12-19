@@ -9,6 +9,9 @@ build = "../build.rs"
 path = "../packages.rs"
 
 [[package.metadata.build-package.external-files]]
+# This is locked against the version shipped in ecs-agent
+# Verify that the ecs-agent version shipped in bottlerocket tracks the same one here
+# https://github.com/aws/amazon-ecs-agent/releases
 url = "https://github.com/aws/amazon-ecs-cni-plugins/archive/53a8481891251e66e35847554d52a13fc7c4fd03/amazon-ecs-cni-plugins.tar.gz"
 sha512 = "e819c1aae509d19461999bf717d126b3e918b73dc6049e415c4911be6cb11159404bb45bb6c92cdfa16b5b30bb174731e972e3f2be44fa0b51bbc7a969049ab7"
 
