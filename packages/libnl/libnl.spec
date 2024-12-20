@@ -1,5 +1,5 @@
-%global rpmver 3.10.0
-%global srcver 3_10_0
+%global rpmver 3.11.0
+%global srcver 3_11_0
 
 Name: %{_cross_os}libnl
 Version: %{rpmver}
@@ -7,7 +7,9 @@ Release: 1%{?dist}
 Summary: Convenience library for netlink
 License: LGPL-2.1-only
 URL: https://github.com/thom311/libnl
-Source0: https://github.com/thom311/libnl/archive/libnl%{srcver}.tar.gz
+Source0: https://github.com/thom311/libnl/releases/download/libnl%{srcver}/libnl-%{version}.tar.gz
+Source1: https://github.com/thom311/libnl/releases/download/libnl%{srcver}/libnl-%{version}.tar.gz.sig
+Source2: gpgkey-49EA7C670E0850E7419514F629C2366E4DFC5728.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -21,7 +23,8 @@ Requires: %{name}
 %{summary}.
 
 %prep
-%autosetup -n libnl-libnl%{srcver} -p1
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
+%autosetup -n libnl-%{version} -p1
 
 %build
 autoreconf -fi

@@ -1,11 +1,13 @@
 Name: %{_cross_os}libelf
-Version: 0.191
+Version: 0.192
 Release: 1%{?dist}
 Epoch: 1
 Summary: Library for ELF files
 License: GPL-2.0-or-later OR LGPL-3.0-or-later
 URL: https://sourceware.org/elfutils/
 Source0: https://sourceware.org/elfutils/ftp/%{version}/elfutils-%{version}.tar.bz2
+Source1: https://sourceware.org/elfutils/ftp/%{version}/elfutils-%{version}.tar.bz2.sig
+Source2: gpgkey-6C2B631563B8D330578D3CB474FD3FA2779E7073.asc
 
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libz-devel
@@ -22,6 +24,7 @@ Requires: %{_cross_os}libz-devel
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n elfutils-%{version} -p1
 
 %build
