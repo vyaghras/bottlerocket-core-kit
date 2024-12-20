@@ -1,0 +1,78 @@
+From 626c048f32a979f77662bdcb1cca477c11d3f9c1 Mon Sep 17 00:00:00 2001
+From: Aurelien Jarno <aurelien@aurel32.net>
+Date: Sun, 10 Nov 2024 10:50:34 +0100
+Subject: [PATCH] elf: handle addition overflow in _dl_find_object_update_1 [BZ
+ #32245]
+
+The remaining_to_add variable can be 0 if (current_used + count) wraps,
+This is caught by GCC 14+ on hppa, which determines from there that
+target_seg could be be NULL when remaining_to_add is zero, which in
+turns causes a -Wstringop-overflow warning:
+
+ In file included from ../include/atomic.h:49,
+                  from dl-find_object.c:20:
+ In function '_dlfo_update_init_seg',
+     inlined from '_dl_find_object_update_1' at dl-find_object.c:689:30,
+     inlined from '_dl_find_object_update' at dl-find_object.c:805:13:
+ ../sysdeps/unix/sysv/linux/hppa/atomic-machine.h:44:4: error: '__atomic_store_4' writing 4 bytes into a region of size 0 overflows the destination [-Werror=stringop-overflow=]
+    44 |    __atomic_store_n ((mem), (val), __ATOMIC_RELAXED);                        \
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ dl-find_object.c:644:3: note: in expansion of macro 'atomic_store_relaxed'
+   644 |   atomic_store_relaxed (&seg->size, new_seg_size);
+       |   ^~~~~~~~~~~~~~~~~~~~
+ In function '_dl_find_object_update':
+ cc1: note: destination object is likely at address zero
+
+In practice, this is not possible as it represent counts of link maps.
+Link maps have sizes larger than 1 byte, so the sum of any two link map
+counts will always fit within a size_t without wrapping around.
+
+This patch therefore adds a check on remaining_to_add == 0 and tell GCC
+that this can not happen using __builtin_unreachable.
+
+Thanks to Andreas Schwab for the investigation.
+
+Closes: BZ #32245
+Signed-off-by: Aurelien Jarno <aurelien@aurel32.net>
+Tested-by: John David Anglin <dave.anglin@bell.net>
+Reviewed-by: Florian Weimer <fweimer@redhat.com>
+(cherry picked from commit 6c915c73d08028987232f6dc718f218c61113240)
+---
+ NEWS                 | 1 +
+ elf/dl-find_object.c | 8 ++++++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/NEWS b/NEWS
+index dc815fb6d3..bd0b3bd66a 100644
+--- a/NEWS
++++ b/NEWS
+@@ -19,6 +19,7 @@ The following bugs are resolved with this release:
+   [32052] Name space violation in fortify wrappers
+   [32137] libio: Attempt wide backup free only for non-legacy code
+   [32231] elf: Change ldconfig auxcache magic number
++  [32245] glibc -Wstringop-overflow= build failure on hppa
+ 
+ Version 2.40
+ 
+diff --git a/elf/dl-find_object.c b/elf/dl-find_object.c
+index 449302eda3..ae18b438d3 100644
+--- a/elf/dl-find_object.c
++++ b/elf/dl-find_object.c
+@@ -662,6 +662,14 @@ _dl_find_object_update_1 (struct link_map **loaded, size_t count)
+     = _dlfo_loaded_mappings[!active_idx];
+   size_t remaining_to_add = current_used + count;
+ 
++  /* remaining_to_add can be 0 if (current_used + count) wraps, but in practice
++     this is not possible as it represent counts of link maps.  Link maps have
++     sizes larger than 1 byte, so the sum of any two link map counts will
++     always fit within a size_t without wrapping around.  This check ensures
++     that target_seg is not erroneously considered potentially NULL by GCC. */
++  if (remaining_to_add == 0)
++    __builtin_unreachable ();
++
+   /* Ensure that the new segment chain has enough space.  */
+   {
+     size_t new_allocated
+-- 
+2.47.0
+

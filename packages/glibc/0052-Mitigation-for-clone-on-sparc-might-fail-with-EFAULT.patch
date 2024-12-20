@@ -1,0 +1,66 @@
+From 234458024300f0b4b430785999f33eddf059af6a Mon Sep 17 00:00:00 2001
+From: Michael Karcher <Michael.Karcher@fu-berlin.de>
+Date: Sun, 28 Jul 2024 15:30:57 +0200
+Subject: [PATCH] Mitigation for "clone on sparc might fail with -EFAULT for no
+ valid reason" (bz 31394)
+
+It seems the kernel can not deal with uncommitted stack space in the area intended
+for the register window when executing the clone() system call. So create a nested
+frame (proxy for the kernel frame) and flush it from the processor to memory to
+force committing pages to the stack before invoking the system call.
+
+Bug: https://www.mail-archive.com/debian-glibc@lists.debian.org/msg62592.html
+Bug: https://sourceware.org/bugzilla/show_bug.cgi?id=31394
+See-also: https://lore.kernel.org/sparclinux/62f9be9d-a086-4134-9a9f-5df8822708af@mkarcher.dialup.fu-berlin.de/
+Signed-off-by: Michael Karcher <sourceware-bugzilla@mkarcher.dialup.fu-berlin.de>
+Reviewed-by: DJ Delorie <dj@redhat.com>
+(cherry picked from commit faeaa3bc9f76030b9882ccfdee232fc0ca6dcb06)
+---
+ NEWS                                          | 1 +
+ sysdeps/unix/sysv/linux/sparc/sparc32/clone.S | 3 +++
+ sysdeps/unix/sysv/linux/sparc/sparc64/clone.S | 3 +++
+ 3 files changed, 7 insertions(+)
+
+diff --git a/NEWS b/NEWS
+index 928c516bec..dc815fb6d3 100644
+--- a/NEWS
++++ b/NEWS
+@@ -11,6 +11,7 @@ The following bugs are resolved with this release:
+ 
+   [27821] ungetc: Fix backup buffer leak on program exit
+   [30081] resolv: Do not wait for non-existing second DNS response after error
++  [31394] clone on sparc might fail with -EFAULT for no valid reason
+   [31717] elf: Avoid re-initializing already allocated TLS in dlopen
+   [31890] resolv: Allow short error responses to match any DNS query
+   [31968] mremap implementation in C does not handle arguments correctly
+diff --git a/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S b/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S
+index 748d25fcfe..c9cf9bb055 100644
+--- a/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S
++++ b/sysdeps/unix/sysv/linux/sparc/sparc32/clone.S
+@@ -28,6 +28,9 @@
+ 	.text
+ ENTRY (__clone)
+ 	save	%sp,-96,%sp
++	save	%sp,-96,%sp
++	flushw
++	restore
+ 	cfi_def_cfa_register(%fp)
+ 	cfi_window_save
+ 	cfi_register(%o7, %i7)
+diff --git a/sysdeps/unix/sysv/linux/sparc/sparc64/clone.S b/sysdeps/unix/sysv/linux/sparc/sparc64/clone.S
+index e5ff2cf1a0..370d51fda2 100644
+--- a/sysdeps/unix/sysv/linux/sparc/sparc64/clone.S
++++ b/sysdeps/unix/sysv/linux/sparc/sparc64/clone.S
+@@ -32,6 +32,9 @@
+ 
+ ENTRY (__clone)
+ 	save	%sp, -192, %sp
++	save	%sp, -192, %sp
++	flushw
++	restore
+ 	cfi_def_cfa_register(%fp)
+ 	cfi_window_save
+ 	cfi_register(%o7, %i7)
+-- 
+2.47.0
+

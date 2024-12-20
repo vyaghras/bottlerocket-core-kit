@@ -1,0 +1,36 @@
+From 132a72f93cb4ad9f16b8469dc061de5f75f6a44e Mon Sep 17 00:00:00 2001
+From: Lukas Bulwahn <lukas.bulwahn@redhat.com>
+Date: Mon, 29 Jul 2024 11:08:17 +0200
+Subject: [PATCH] manual: make setrlimit() description less ambiguous
+
+The existing description for setrlimit() has some ambiguity. It could be
+understood to have the semantics of getrlimit(), i.e., the limits from the
+process are stored in the provided rlp pointer.
+
+Make the description more explicit that rlp are the input values, and that
+the limits of the process is changed with this function.
+
+Reviewed-by: Florian Weimer <fweimer@redhat.com>
+(cherry picked from commit aedbf08891069fc029ed021e4dba933eb877b394)
+---
+ manual/resource.texi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/manual/resource.texi b/manual/resource.texi
+index c9b21dedeb..25966bcb64 100644
+--- a/manual/resource.texi
++++ b/manual/resource.texi
+@@ -192,8 +192,8 @@ If the sources are compiled with @code{_FILE_OFFSET_BITS == 64} on a
+ @standards{BSD, sys/resource.h}
+ @safety{@prelim{}@mtsafe{}@assafe{}@acsafe{}}
+ @c Direct syscall on most systems; lock-taking critical section on HURD.
+-Store the current and maximum limits for the resource @var{resource}
+-in @code{*@var{rlp}}.
++Change the current and maximum limits of the process for the resource
++@var{resource} to the values provided in @code{*@var{rlp}}.
+ 
+ The return value is @code{0} on success and @code{-1} on failure.  The
+ following @code{errno} error condition is possible:
+-- 
+2.47.0
+
