@@ -15,6 +15,10 @@ releases-url = "https://netfilter.org/projects/libnetfilter_queue/files"
 url = "https://netfilter.org/projects/libnetfilter_queue/files/libnetfilter_queue-1.0.5.tar.bz2"
 sha512 = "732a44b602e5efaa4f5582ea25ff8f5ec8f4dca5c0e725cd93fe2d441db80416b25c6018147be90acb262d7428eb5b21b3f7b5920e612d115061ec6a19d67f85"
 
+[[package.metadata.build-package.external-files]]
+url = "https://netfilter.org/projects/libnetfilter_queue/files/libnetfilter_queue-1.0.5.tar.bz2.sig"
+sha512 = "65558652c7d54087eb1b5a37f7574bcca3495e5ee6587c7b555a7fe6e118007cf9431a66ed5280ce272890c659eb171570e0d0cbb733cf969ae8b44a1d541687"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libmnl = { path = "../libmnl" }

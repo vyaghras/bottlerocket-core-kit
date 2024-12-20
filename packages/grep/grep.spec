@@ -5,7 +5,9 @@ Epoch: 1
 Summary: GNU grep utility
 URL: https://www.gnu.org/software/grep/
 License: GPL-3.0-or-later
-Source: https://mirrors.kernel.org/gnu/grep/grep-%{version}.tar.xz
+Source0: https://mirrors.kernel.org/gnu/grep/grep-%{version}.tar.xz
+Source1: https://mirrors.kernel.org/gnu/grep/grep-%{version}.tar.xz.sig
+Source2: gpgkey-155D3FC500C834486D1EEA677FD9FCCB000BEEEE.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libpcre-devel
 Requires: %{_cross_os}libpcre
@@ -14,7 +16,8 @@ Requires: %{_cross_os}libpcre
 %{summary}.
 
 %prep
-%setup -n grep-%{version}
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
+%autosetup -n grep-%{version} -p1
 
 %build
 %cross_configure --without-included-regex --disable-silent-rules

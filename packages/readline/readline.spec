@@ -5,6 +5,8 @@ Summary: A library for editing typed command lines
 License: GPL-3.0-or-later
 URL: https://tiswww.case.edu/php/chet/readline/rltop.html
 Source0: https://ftp.gnu.org/gnu/readline/readline-%{version}.tar.gz
+Source1: https://ftp.gnu.org/gnu/readline/readline-%{version}.tar.gz.sig
+Source2: gpgkey-7C0135FB088AAF6C66C650B9BB5869F064EA74AB.asc
 Patch1: readline-8.2-shlib.patch
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libncurses-devel
@@ -21,6 +23,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n readline-%{version} -p1
 
 %build

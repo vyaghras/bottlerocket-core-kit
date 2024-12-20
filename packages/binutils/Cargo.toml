@@ -8,9 +8,16 @@ build = "../build.rs"
 [lib]
 path = "../packages.rs"
 
+[package.metadata.build-package]
+releases-url = "https://mirrors.kernel.org/gnu/binutils/"
+
 [[package.metadata.build-package.external-files]]
 url = "https://mirrors.kernel.org/gnu/binutils/binutils-2.41.tar.xz"
 sha512 = "5df45d0bd6ddabdce4f35878c041e46a92deef01e7dea5facc97fd65cc06b59abc6fba0eb454b68e571c7e14038dc823fe7f2263843e6e627b7444eaf0fe9374"
+
+[[package.metadata.build-package.external-files]]
+url = "https://mirrors.kernel.org/gnu/binutils/binutils-2.41.tar.xz.sig"
+sha512 = "e86b940a1fa73775236fe8e7cf824625c6add59072fe7948a7de8f613bb1bbbbb7108e4f9651cb0f606007f4180a0fe13911d84c70149e82242169e4ce5892e2"
 
 [build-dependencies]
 glibc = { path = "../glibc" }

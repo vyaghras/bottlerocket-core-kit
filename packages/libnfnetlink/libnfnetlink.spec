@@ -6,6 +6,8 @@ Summary: Library for netfilter netlink
 License: GPL-2.0-only
 URL: http://netfilter.org
 Source0: http://netfilter.org/projects/libnfnetlink/files/libnfnetlink-%{version}.tar.bz2
+Source1: http://netfilter.org/projects/libnfnetlink/files/libnfnetlink-%{version}.tar.bz2.sig
+Source2: gpgkey-37D964ACC04981C75500FB9BD55D978A8A1420E4.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -19,6 +21,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libnfnetlink-%{version} -p1
 
 %build

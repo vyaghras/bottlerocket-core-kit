@@ -6,6 +6,8 @@ Summary: Library for SELinux policy manipulation
 License: LGPL-2.1-or-later
 URL: https://github.com/SELinuxProject/
 Source0: https://github.com/SELinuxProject/selinux/releases/download/%{version}/libsepol-%{version}.tar.gz
+Source1: https://github.com/SELinuxProject/selinux/releases/download/%{version}/libsepol-%{version}.tar.gz.asc
+Source2: gpgkey-1BE2C0FF08949623102FD2564695881C254508D1.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -19,6 +21,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libsepol-%{version} -p1
 
 %global set_env \

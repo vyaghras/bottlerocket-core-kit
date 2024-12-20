@@ -5,6 +5,8 @@ Summary: Utilities for managing the XFS filesystem
 License: GPL-2.0-only AND LGPL-2.1-only
 URL: https://xfs.wiki.kernel.org
 Source0: http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/xfsprogs-%{version}.tar.xz
+Source1: http://kernel.org/pub/linux/utils/fs/xfs/xfsprogs/xfsprogs-%{version}.tar.sign
+Source2: gpgkey-0C1D891C50A732E0680F7B644675A111E50B5FA6.asc
 
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libuuid-devel
@@ -26,6 +28,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=<(xzcat %{S:0}) --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n xfsprogs-%{version}
 
 %build

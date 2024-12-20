@@ -6,6 +6,8 @@ Summary: Library for access control list support
 License: LGPL-2.1-or-later
 URL: https://savannah.nongnu.org/projects/acl
 Source0: https://download-mirror.savannah.gnu.org/releases/acl/acl-%{version}.tar.gz
+Source1: https://download-mirror.savannah.gnu.org/releases/acl/acl-%{version}.tar.gz.sig
+Source2: gpgkey-B902B5271325F892AC251AD441633B9FE837F581.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libattr-devel
 Requires: %{_cross_os}libattr
@@ -21,6 +23,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n acl-%{version} -p1
 
 %build

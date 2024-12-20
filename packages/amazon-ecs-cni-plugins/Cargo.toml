@@ -8,6 +8,10 @@ build = "../build.rs"
 [lib]
 path = "../packages.rs"
 
+[package.metadata.build-package]
+# Use the Git submodule commit from aws/amazon-ecs-agent rather than an upstream release.
+releases-url = "https://github.com/aws/amazon-ecs-agent/commits/master/amazon-ecs-cni-plugins"
+
 [[package.metadata.build-package.external-files]]
 # This is locked against the version shipped in ecs-agent
 # Verify that the ecs-agent version shipped in bottlerocket tracks the same one here

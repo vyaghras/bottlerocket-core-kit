@@ -6,6 +6,8 @@ Summary: Library for netfilter queue
 License: GPL-2.0-or-later
 URL: http://netfilter.org
 Source0: https://netfilter.org/projects/libnetfilter_queue/files/libnetfilter_queue-%{version}.tar.bz2
+Source1: https://netfilter.org/projects/libnetfilter_queue/files/libnetfilter_queue-%{version}.tar.bz2.sig
+Source2: gpgkey-C09DB2063F1D7034BA6152ADAB4655A126D292E4.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libmnl-devel
 BuildRequires: %{_cross_os}libnfnetlink-devel
@@ -23,6 +25,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libnetfilter_queue-%{version} -p1
 
 %build

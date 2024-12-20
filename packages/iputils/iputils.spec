@@ -4,7 +4,9 @@ Release: 1%{?dist}
 Summary: A set of network monitoring tools
 License: GPL-2.0-or-later AND BSD-3-Clause
 URL: https://github.com/iputils/iputils
-Source0: https://github.com/iputils/iputils/archive/%{version}.tar.gz#/iputils-%{version}.tar.gz
+Source0: https://github.com/iputils/iputils/releases/download/%{version}/iputils-%{version}.tar.gz
+Source1: https://github.com/iputils/iputils/releases/download/%{version}/iputils-%{version}.tar.gz.asc
+Source2: gpgkey-2016FEA4858B1C36B32E833AC0DEC2EE72F33A5F.asc
 
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libcap-devel
@@ -14,6 +16,7 @@ Requires: %{_cross_os}libcap
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n iputils-%{version} -p1
 
 %build

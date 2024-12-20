@@ -6,6 +6,8 @@ Summary: Library for nftables netlink
 License: GPL-2.0-or-later AND GPL-2.0-only
 URL: http://netfilter.org/projects/libnftnl/
 Source0: https://netfilter.org/projects/libnftnl/files/libnftnl-%{version}.tar.xz
+Source1: https://netfilter.org/projects/libnftnl/files/libnftnl-%{version}.tar.xz.sig
+Source2: gpgkey-37D964ACC04981C75500FB9BD55D978A8A1420E4.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libmnl-devel
 Requires: %{_cross_os}libmnl
@@ -21,6 +23,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libnftnl-%{version} -p1
 
 %build

@@ -15,6 +15,10 @@ releases-url = "https://ftp.gnu.org/gnu/bash"
 url = "https://ftp.gnu.org/gnu/bash/bash-5.2.37.tar.gz"
 sha512 = "c07e2715cca7c3c8435fcb13aaf2968671f10f9e1fe5edd7c63d7e34fb821c159087b70386e17bdda723d8223057b53810e75eb249b03ebfc847147b06a8101f"
 
+[[package.metadata.build-package.external-files]]
+url = "https://ftp.gnu.org/gnu/bash/bash-5.2.37.tar.gz.sig"
+sha512 = "5700135e0f6ddb86e577445eeead7ee07df80d00b751ef2c3332b7af76a1f0d7c69be5f72790ce37249d0652532232d1bc8e1e7cb73c105da7337fc5f5c1f539"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libncurses = { path = "../libncurses" }

@@ -5,6 +5,8 @@ Summary: Library for regular expressions
 License: BSD-3-Clause
 URL: https://www.pcre.org/
 Source0: https://github.com/PhilipHazel/pcre2/releases/download/pcre2-%{version}/pcre2-%{version}.tar.bz2
+Source1: https://github.com/PhilipHazel/pcre2/releases/download/pcre2-%{version}/pcre2-%{version}.tar.bz2.sig
+Source2: gpgkey-45F68D54BBE23FB3039B46E59766E084FB0F43D8.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -18,6 +20,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n pcre2-%{version} -p1
 
 %build

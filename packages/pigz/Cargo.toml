@@ -8,9 +8,16 @@ build = "../build.rs"
 [lib]
 path = "../packages.rs"
 
+[package.metadata.build-package]
+releases-url = "https://www.zlib.net/pigz/"
+
 [[package.metadata.build-package.external-files]]
 url = "https://zlib.net/pigz/pigz-2.8.tar.gz"
 sha512 = "ae3d9d593e1645d65f9ab77aa828600c9af4bb30d0a073da7ae3dd805e65b87efaf6a0efb980f2d0168e475ae506eba194547d6479956dabb9d88293a9078a7f"
+
+[[package.metadata.build-package.external-files]]
+url = "https://zlib.net/pigz/pigz-2.8-sig.txt"
+sha512 = "cb1dbca21d8fed25049693de02abf7489f61407d85f9a52d566c14e0194c6c393aed3edd2fd716d0ecedf7eeead6ae89d0cecc236caacd98740d14bd71e078db"
 
 [build-dependencies]
 glibc = { path = "../glibc" }

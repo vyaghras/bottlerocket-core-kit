@@ -15,6 +15,10 @@ releases-url = "https://github.com/bus1/dbus-broker/releases/"
 url = "https://github.com/bus1/dbus-broker/releases/download/v36/dbus-broker-36.tar.xz"
 sha512 = "47ff345e27ae2ba41f43a4a6eb09b813583ef43392d1dfa2fc1805578c0ed3a1e414c3eae63f78ca3806904dc017a138e283aa32ba973de51ed613050b244a0f"
 
+[[package.metadata.build-package.external-files]]
+url = "https://github.com/bus1/dbus-broker/releases/download/v36/dbus-broker-36.tar.xz.asc"
+sha512 = "711e3db030cd8d3953e966c11d2afa4c543548f882d3364fc0b79b7cfb3b8d5ecb65b1148429acf80b5ee803305f27f80538bd2f4b30e98da97fd05eb6dc0344"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libexpat = { path = "../libexpat" }

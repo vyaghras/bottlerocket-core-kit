@@ -15,6 +15,10 @@ releases-url = "https://ftp.gnu.org/gnu/readline"
 url = "https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz"
 sha512 = "0a451d459146bfdeecc9cdd94bda6a6416d3e93abd80885a40b334312f16eb890f8618a27ca26868cebbddf1224983e631b1cbc002c1a4d1cd0d65fba9fea49a"
 
+[[package.metadata.build-package.external-files]]
+url = "https://ftp.gnu.org/gnu/readline/readline-8.2.tar.gz.sig"
+sha512 = "0effd273689e5f7fe7e049c8f2c5f3c97149f198a90d053231ee4de34901560a465ab0d4fd71fd07c7d7e233caed7f42e5b668bffaf1e23a7eb373c8f9e150fe"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libncurses = { path = "../libncurses" }

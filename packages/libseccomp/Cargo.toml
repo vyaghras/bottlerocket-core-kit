@@ -15,5 +15,9 @@ releases-url = "https://github.com/seccomp/libseccomp/releases/"
 url = "https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libseccomp-2.5.5.tar.gz"
 sha512 = "f630e7a7e53a21b7ccb4d3e7b37616b89aeceba916677c8e3032830411d77a14c2d74dcf594cd193b1acc11f52595072e28316dc44300e54083d5d7b314a38da"
 
+[[package.metadata.build-package.external-files]]
+url = "https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libseccomp-2.5.5.tar.gz.asc"
+sha512 = "a32a7146598f9183179ad15603181d1066e806d01f7c5f215d5405ad8618c06a265d05fff3b4a6cc49c50a577d93d6b920e85f6a581786b3db7389f52a4638e2"
+
 [build-dependencies]
 glibc = { path = "../glibc" }

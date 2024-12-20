@@ -15,6 +15,10 @@ releases-url = "https://netfilter.org/projects/libnftnl/files"
 url = "http://netfilter.org/projects/libnftnl/files/libnftnl-1.2.8.tar.xz"
 sha512 = "c57030f34c50b09ae2fbf8dac5d9cf431eaaa5a5a08098e3e4c146a8bd4ae9b7753f5d2de5f2d0a6c15e5ba0c39f51275c9d8b03bdedeaadbafa6c96f9a972b6"
 
+[[package.metadata.build-package.external-files]]
+url = "http://netfilter.org/projects/libnftnl/files/libnftnl-1.2.8.tar.xz.sig"
+sha512 = "f56a5f049dab8397f4ff84070d782f17b701b46bd42c84cb3fb2b7241a7543f0b5f2877e7d6d95fb942f36119e54c939f89af964ea08858d2c41dc9fd7323b16"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libmnl = { path = "../libmnl" }

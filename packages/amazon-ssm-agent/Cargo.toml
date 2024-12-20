@@ -8,6 +8,9 @@ build = "../build.rs"
 [lib]
 path = "../packages.rs"
 
+[package.metadata.build-package]
+releases-url = "https://github.com/aws/amazon-ssm-agent/releases"
+
 [[package.metadata.build-package.external-files]]
 url = "https://github.com/aws/amazon-ssm-agent/archive/3.3.1345.0/amazon-ssm-agent-3.3.1345.0.tar.gz"
 sha512 = "c147a59509db081c5bc8d7aeca6870fb1e907b252e62513164935549a11d4276dda7c214d349af9d9e7cf136058e0cd9cd77e15088b5fd38ae14c0472a064923"

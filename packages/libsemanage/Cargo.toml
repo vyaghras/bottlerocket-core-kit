@@ -15,6 +15,10 @@ releases-url = "https://github.com/SELinuxProject/selinux/releases/"
 url = "https://github.com/SELinuxProject/selinux/releases/download/3.7/libsemanage-3.7.tar.gz"
 sha512 = "4b6370b02116364964ff24b93fb6629c885611de78419f649a027db38b4f1c3b3adf3b438efb34a92b49407ab8f9446ed4091fe4c99fa4752f0f5e3e31589415"
 
+[[package.metadata.build-package.external-files]]
+url = "https://github.com/SELinuxProject/selinux/releases/download/3.7/libsemanage-3.7.tar.gz.asc"
+sha512 = "670ea358add41fd07828ffeb83aae676cd1fdc9abbad8afaa3fd9ee1f42891ec4ae03320e324bac99335159e4e2794bbc3c6f66715cae47b1745b609abd68e34"
+
 [build-dependencies]
 glibc = { path = "../glibc" }
 libaudit = { path = "../libaudit" }

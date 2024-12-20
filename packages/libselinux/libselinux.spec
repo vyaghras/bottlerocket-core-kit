@@ -6,6 +6,8 @@ Summary: Library for SELinux
 License: LicenseRef-SELinux-PD
 URL: https://github.com/SELinuxProject/
 Source0: https://github.com/SELinuxProject/selinux/releases/download/%{version}/libselinux-%{version}.tar.gz
+Source1: https://github.com/SELinuxProject/selinux/releases/download/%{version}/libselinux-%{version}.tar.gz.asc
+Source2: gpgkey-1BE2C0FF08949623102FD2564695881C254508D1.asc
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libpcre-devel
 BuildRequires: %{_cross_os}libsepol-devel
@@ -33,6 +35,7 @@ Requires: %{_cross_os}libsepol-devel
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n libselinux-%{version} -p1
 
 %global set_env \

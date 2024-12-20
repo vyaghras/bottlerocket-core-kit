@@ -5,6 +5,8 @@ Summary: The GNU Bourne Again shell
 License: GPL-3.0-or-later
 URL: https://www.gnu.org/software/bash
 Source0: https://ftp.gnu.org/gnu/bash/bash-%{version}.tar.gz
+Source1: https://ftp.gnu.org/gnu/bash/bash-%{version}.tar.gz.sig
+Source2: gpgkey-7C0135FB088AAF6C66C650B9BB5869F064EA74AB.asc
 
 # Disable loadable builtin examples
 Patch127: bash-4.4-no-loadable-builtins.patch
@@ -26,6 +28,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n bash-%{version} -p1
 
 echo %{version} > _distribution

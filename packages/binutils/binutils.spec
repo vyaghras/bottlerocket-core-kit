@@ -6,6 +6,8 @@ Summary: Tools for working with binaries
 URL: https://sourceware.org/binutils
 License: GPL-2.0-or-later AND LGPL-2.0-or-later AND GPL-3.0-or-later
 Source0: https://ftp.gnu.org/gnu/binutils/binutils-%{version}.tar.xz
+Source1: https://ftp.gnu.org/gnu/binutils/binutils-%{version}.tar.xz.sig
+Source2: gpgkey-3A24BC1E8FB409FA9F14371813FCEF89DD9E3C4F.asc
 Requires: %{_cross_os}libz
 BuildRequires: %{_cross_os}glibc-devel
 BuildRequires: %{_cross_os}libz-devel
@@ -21,6 +23,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n binutils-%{version} -p1
 
 %build

@@ -8,6 +8,8 @@ Summary: Library for XML parsing
 License: MIT
 URL: https://libexpat.github.io/
 Source0: https://github.com/libexpat/libexpat/releases/download/R_%{unversion}/expat-%{version}.tar.xz
+Source1: https://github.com/libexpat/libexpat/releases/download/R_%{unversion}/expat-%{version}.tar.xz.asc
+Source2: gpgkey-CB8DE70A90CFBF6C3BF5CC5696262ACFFBD3AEC6.asc
 BuildRequires: %{_cross_os}glibc-devel
 
 %description
@@ -21,6 +23,7 @@ Requires: %{name}
 %{summary}.
 
 %prep
+%{gpgverify} --data=%{S:0} --signature=%{S:1} --keyring=%{S:2}
 %autosetup -n expat-%{version} -p1
 
 %build

@@ -8,6 +8,9 @@ build = "../build.rs"
 [lib]
 path = "../packages.rs"
 
+[package.metadata.build-package]
+releases-url = "http://www.dest-unreach.org/socat/"
+
 [[package.metadata.build-package.external-files]]
 url = "http://www.dest-unreach.org/socat/download/socat-1.8.0.1.tar.gz"
 sha512 = "2a327b4c2e00fc6afda503548d5bc285d4f120892c75ec6633201825e39e3003a8b8d827053364dc444b72ff728a82381769941c023d8b0a66d955417162b735"
