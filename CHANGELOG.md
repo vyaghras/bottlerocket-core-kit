@@ -1,3 +1,18 @@
+# v5.3.0 (2025-01-03)
+
+## Orchestrator Changes
+
+### Kubernetes
+* Add Kubernetes 1.32 packages ([#334])
+* Add support for `device-ownership-from-security-context` ([#329])
+
+## Build Changes
+* Update bottlerocket-settings-models to 0.7.0 ([#329])
+
+[#334]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/334
+[#329]: https://github.com/bottlerocket-os/bottlerocket-core-kit/pull/329
+
+
 # v5.2.0 (2024-12-20)
 
 ## OS Changes
