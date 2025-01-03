@@ -32,12 +32,12 @@
 
 Name: %{_cross_os}%{gorepo}
 Version: %{rpmver}
-Release: 0.beta0%{?dist}
+Release: 1%{?dist}
 Summary: Container cluster management
 # base Apache-2.0, third_party Apache-2.0 AND BSD-3-Clause
 License: Apache-2.0 AND BSD-3-Clause
 URL: https://%{goimport}
-Source0: https://distro.eks.amazonaws.com/kubernetes-1-32/releases/1/artifacts/kubernetes/v1.32.0-beta.0/kubernetes-src.tar.gz
+Source0: https://distro.eks.amazonaws.com/kubernetes-1-32/releases/3/artifacts/kubernetes/v1.32.0/kubernetes-src.tar.gz
 Source1: kubelet.service
 Source2: kubelet-env
 Source3: kubelet-config
