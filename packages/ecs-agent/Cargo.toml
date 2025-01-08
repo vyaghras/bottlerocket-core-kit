@@ -13,8 +13,8 @@ path = "../packages.rs"
 releases-url = "https://github.com/aws/amazon-ecs-agent/releases"
 
 [[package.metadata.build-package.external-files]]
-url = "https://github.com/aws/amazon-ecs-agent/archive/v1.88.0/amazon-ecs-agent-1.88.0.tar.gz"
-sha512 = "1d7f38cae0fb7401b48feca4d6ecb270c5c5a5efc4367c58ff8384d2175b4c0b6a76bbe350ab231108eec542a3d6f0d9b8ac60dc121d5fee9a86ef812fdf9785"
+url = "https://github.com/aws/amazon-ecs-agent/archive/v1.89.2/amazon-ecs-agent-1.89.2.tar.gz"
+sha512 = "024f30daa6192f6e03771e507d776d01ec2c86b6cd7682e3b62d5f0e3e1b017b56360ca8e088ea183a4d04e104dc6e2e572ad9658d4bfcdab166d579a3ee1bc8"
 
 [build-dependencies]
 glibc = { path = "../glibc" }
