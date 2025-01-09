@@ -408,8 +408,12 @@ pub(crate) fn get_metadata_for_data_keys<D: DataStore, S: AsRef<str>>(
             Err(_) => continue,
         };
         trace!("Deserializing scalar from metadata");
-        let value: Value = deserialize_scalar::<_, ScalarError>(&value_str)
-            .context(error::InvalidMetadataSnafu { key: md_key.name() })?;
+        let value: Value = deserialize_scalar::<_, ScalarError>(&value_str).context(
+            error::InvalidMetadataSnafu {
+                key: md_key.name(),
+                data_key: data_key.name(),
+            },
+        )?;
         result.insert(data_key.to_string(), value);
     }
 
@@ -436,6 +440,7 @@ pub(crate) fn get_metadata_for_all_data_keys<D: DataStore, S: AsRef<str>>(
             let value: Value = deserialize_scalar::<_, ScalarError>(&value_str).context(
                 error::InvalidMetadataSnafu {
                     key: meta_key.name(),
+                    data_key: data_key.name(),
                 },
             )?;
             result.insert(data_key.to_string(), value);

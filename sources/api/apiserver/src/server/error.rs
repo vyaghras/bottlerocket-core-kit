@@ -136,9 +136,15 @@ pub enum Error {
         source: Box<datastore::Error>,
     },
 
-    #[snafu(display("Metadata '{}' is not valid JSON: {}", key, source))]
+    #[snafu(display(
+        "Metadata '{}' for key '{}' is not valid JSON: {}",
+        key,
+        data_key,
+        source
+    ))]
     InvalidMetadata {
         key: String,
+        data_key: String,
         source: serde_json::Error,
     },
 
