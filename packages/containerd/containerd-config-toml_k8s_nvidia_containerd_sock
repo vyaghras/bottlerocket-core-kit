@@ -2,7 +2,7 @@
 container-registry = "v1"
 container-runtime = "v1"
 kubernetes = "v1"
-std = { version = "v1", helpers = ["join_array"]}
+std = { version = "v1", helpers = ["join_array", "default"]}
 +++
 version = 2
 root = "/var/lib/containerd"
@@ -19,6 +19,7 @@ disabled_plugins = [
 address = "/run/containerd/containerd.sock"
 
 [plugins."io.containerd.grpc.v1.cri"]
+device_ownership_from_security_context = {{default false settings.kubernetes.device-ownership-from-security-context}}
 enable_selinux = true
 # Pause container image is specified here, shares the same image as kubelet's pod-infra-container-image
 sandbox_image = "localhost/kubernetes/pause:0.1.0"
