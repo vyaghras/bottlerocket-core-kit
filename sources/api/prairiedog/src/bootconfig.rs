@@ -231,6 +231,10 @@ fn parse_boot_config_to_boot_settings(bootconfig: &str) -> Result<BootSettings> 
     let mut kernel_params: HashMap<BootConfigKey, Vec<BootConfigValue>> = HashMap::new();
     let mut init_params: HashMap<BootConfigKey, Vec<BootConfigValue>> = HashMap::new();
     for line in bootconfig.trim().lines() {
+        // ignore comment lines
+        if line.trim_start().starts_with("#") {
+            continue;
+        }
         let mut kv = line.trim().splitn(2, '=').map(|kv| kv.trim());
         // Ensure the key is a valid boot config key
         let key: BootConfigKey = kv
