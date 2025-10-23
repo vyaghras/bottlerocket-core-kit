@@ -1,0 +1,17 @@
+
+# cargo-vet audits file
+
+[[audits.argh_derive]]
+who = "Shikha Vyaghra <vyaghras@amazon.com>"
+criteria = "safe-to-deploy"
+version = "0.1.13"
+
+[[audits.argh_shared]]
+who = "Shikha Vyaghra <vyaghras@amazon.com>"
+criteria = "safe-to-deploy"
+version = "0.1.13"
+
+[[audits.deranged]]
+who = "Shikha Vyaghra <vyaghras@amazon.com>"
+criteria = "safe-to-deploy"
+version = "0.5.4"
